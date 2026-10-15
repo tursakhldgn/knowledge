@@ -46,7 +46,7 @@ export default function Giris() {
         setMesaj("Profil kaydedilemedi: " + profilHata.message);
         return;
       }
-      router.push("/sorular");
+      router.push("/profil");
     } else {
       setMesaj("Kayıt oldun! E-postanı onayla, sonra giriş yap.");
     }

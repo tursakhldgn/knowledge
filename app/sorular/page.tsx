@@ -27,6 +27,12 @@ type Oy = {
   kullanici_id: string;
 };
 
+type Profil = {
+  kullanici_id: string;
+  takma_ad: string | null;
+  avatar_url: string | null;
+};
+
 export default function Sorular() {
   const router = useRouter();
   const [sorular, setSorular] = useState<Soru[]>([]);
@@ -39,7 +45,9 @@ export default function Sorular() {
   const [aciklama, setAciklama] = useState("");
   const [yeniAnlatim, setYeniAnlatim] = useState<Record<string, string>>({});
   const [mesaj, setMesaj] = useState("");
-
+  const [profilEksik, setProfilEksik] = useState(false);
+  const [profiller, setProfiller] = useState<Record<string, Profil>>({});
+ 
   async function verileriGetir() {
     const [s, a, o] = await Promise.all([
       supabase
@@ -56,6 +64,15 @@ export default function Sorular() {
     else setSorular(s.data ?? []);
     if (a.data) setAnlatimlar(a.data);
     if (o.data) setOylar(o.data);
+
+    const { data: p } = await supabase
+  .from("profiller")
+  .select("kullanici_id, takma_ad, avatar_url");
+if (p) {
+  const harita: Record<string, Profil> = {};
+  p.forEach((x) => (harita[x.kullanici_id] = x));
+  setProfiller(harita);
+}
   }
 
   useEffect(() => {
@@ -66,6 +83,15 @@ export default function Sorular() {
         return;
       }
       setBenimId(data.user.id);
+      const { data: p } = await supabase
+  .from("profiller")
+  .select("takma_ad")
+  .eq("kullanici_id", data.user.id)
+  .maybeSingle();
+const son = Number(localStorage.getItem("profilHatirlatma") ?? 0);
+if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
+  setProfilEksik(true);
+}
       verileriGetir();
     }
     basla();
@@ -149,12 +175,46 @@ export default function Sorular() {
     );
   }
 
+  function Yazar({ id }: { id: string }) {
+  const p = profiller[id];
+  return (
+    <span className="flex items-center gap-2 text-sm text-gray-400">
+      <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-gray-700 text-xs">
+        {p?.avatar_url ? (
+          <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          "👤"
+        )}
+      </span>
+      {p?.takma_ad ? "@" + p.takma_ad : "isimsiz"}
+    </span>
+  );
+}
+
   const kutu =
     "w-full rounded border border-gray-400 bg-white p-2 text-black placeholder-gray-500";
 
   return (
     <main className="mx-auto flex max-w-xl flex-col gap-4 p-6">
       <h1 className="text-3xl font-bold">Sorular</h1>
+   
+    {profilEksik && (
+  <div className="flex items-center justify-between gap-3 rounded border border-yellow-600 p-3 text-sm">
+    <span>Profilini tamamla: kullanıcı adı seç, istersen fotoğraf ekle.</span>
+    <span className="flex shrink-0 gap-3">
+      <a href="/profil" className="text-blue-400 underline">Tamamla</a>
+      <button
+        onClick={() => {
+          localStorage.setItem("profilHatirlatma", String(Date.now()));
+          setProfilEksik(false);
+        }}
+        className="text-gray-400 underline"
+      >
+        Sonra
+      </button>
+    </span>
+  </div>
+)}
 
       <section className="flex flex-col gap-2 rounded border border-gray-600 p-4">
         <h2 className="text-xl font-semibold">Neyi anlamadın?</h2>
@@ -211,6 +271,7 @@ export default function Sorular() {
               <p className="text-sm text-gray-400">
                 {s.ders} · {s.konu}
               </p>
+              <Yazar id={s.kullanici_id} />
               <h3 className="text-lg font-semibold">{s.baslik}</h3>
               {s.aciklama && <p className="mt-1">{s.aciklama}</p>}
 
@@ -243,6 +304,7 @@ export default function Sorular() {
                       key={a.id}
                       className="rounded bg-gray-800 p-3 text-sm"
                     >
+                      <Yazar id={a.kullanici_id} />
                       <p className="whitespace-pre-wrap">{a.icerik}</p>
                       <div className="mt-2 flex items-center gap-3">
                         {benimki ? (
