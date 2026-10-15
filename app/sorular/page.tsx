@@ -51,7 +51,8 @@ export default function Sorular() {
   const [mesaj, setMesaj] = useState("");
   const [profilEksik, setProfilEksik] = useState(false);
   const [profiller, setProfiller] = useState<Record<string, Profil>>({});
-
+  const [anlatimHata, setAnlatimHata] = useState<Record<string, string>>({});
+  
   async function verileriGetir() {
     const [s, a, o] = await Promise.all([
       supabase
@@ -103,6 +104,10 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
 
   async function soruEkle() {
     setMesaj("");
+    if (baslik.trim().length < 5) {
+  setMesaj("Başlık en az 5 karakter olmalı.");
+  return;
+}
     const { error } = await supabase
       .from("sorular")
       .insert({ ders, konu, baslik, aciklama });
@@ -120,19 +125,30 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
     verileriGetir();
   }
 
-  async function anlatimEkle(soruId: string) {
-    setMesaj("");
-    const icerik = yeniAnlatim[soruId] ?? "";
-    const { error } = await supabase
-      .from("anlatimlar")
-      .insert({ soru_id: soruId, icerik });
-    if (error) {
-      setMesaj("Hata: " + error.message);
-      return;
-    }
-    setYeniAnlatim({ ...yeniAnlatim, [soruId]: "" });
-    verileriGetir();
+ async function anlatimEkle(soruId: string) {
+  setMesaj("");
+  const icerik = yeniAnlatim[soruId] ?? "";
+  if (icerik.trim().length < 10) {
+    setAnlatimHata({
+      ...anlatimHata,
+      [soruId]: "Anlatım en az 10 karakter olmalı.",
+    });
+    return;
   }
+  setAnlatimHata({ ...anlatimHata, [soruId]: "" });
+  const { error } = await supabase
+    .from("anlatimlar")
+    .insert({ soru_id: soruId, icerik });
+  if (error) {
+    setAnlatimHata({
+      ...anlatimHata,
+      [soruId]: "Anlatım kaydedilemedi, tekrar dene.",
+    });
+    return;
+  }
+  setYeniAnlatim({ ...yeniAnlatim, [soruId]: "" });
+  verileriGetir();
+}
 
   async function anlatimSil(id: string) {
     await supabase.from("anlatimlar").delete().eq("id", id);
@@ -304,7 +320,11 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
         >
           Soruyu paylaş
         </button>
-        {mesaj && <p className="text-red-400">{mesaj}</p>}
+        {mesaj && (
+  <p className="text-red-400">
+    {mesaj.startsWith("Hata:") ? "Bir sorun oldu, tekrar dene." : mesaj}
+  </p>
+)}
         <p className="text-sm text-gray-400">
           Telefon numarası, Instagram adı gibi kişisel bilgi paylaşma.
         </p>
@@ -398,21 +418,24 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
                   );
                 })}
 
-                <textarea
-                  className={kutu}
-                  rows={3}
-                  placeholder="Bu konuyu nasıl anlatırsın? (en az 10 karakter)"
-                  value={yeniAnlatim[s.id] ?? ""}
-                  onChange={(e) =>
-                    setYeniAnlatim({ ...yeniAnlatim, [s.id]: e.target.value })
-                  }
-                />
-                <button
-                  onClick={() => anlatimEkle(s.id)}
-                  className="self-start rounded bg-gray-600 px-4 py-2 text-white"
-                >
-                  Anlat
-                </button>
+               <textarea
+  className={kutu}
+  rows={3}
+  placeholder="Bu konuyu nasıl anlatırsın? (en az 10 karakter)"
+  value={yeniAnlatim[s.id] ?? ""}
+  onChange={(e) =>
+    setYeniAnlatim({ ...yeniAnlatim, [s.id]: e.target.value })
+  }
+/>
+{anlatimHata[s.id] && (
+  <p className="text-sm text-red-400">{anlatimHata[s.id]}</p>
+)}
+<button
+  onClick={() => anlatimEkle(s.id)}
+  className="self-start rounded bg-gray-600 px-4 py-2 text-white"
+>
+  Anlat
+</button>
               </div>
             </article>
           );
