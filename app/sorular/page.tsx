@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { DERSLER, DERS_LISTESI } from "@/lib/dersler";
 
 type Soru = {
   id: string;
@@ -39,15 +40,18 @@ export default function Sorular() {
   const [anlatimlar, setAnlatimlar] = useState<Anlatim[]>([]);
   const [oylar, setOylar] = useState<Oy[]>([]);
   const [benimId, setBenimId] = useState("");
-  const [ders, setDers] = useState("TYT Matematik");
-  const [konu, setKonu] = useState("");
+  const [ders, setDers] = useState(DERS_LISTESI[1]);
+  const [konu, setKonu] = useState(DERSLER[DERS_LISTESI[1]][0]);
+  const [filtreDers, setFiltreDers] = useState("");
+  const [filtreKonu, setFiltreKonu] = useState("");
+  const [arama, setArama] = useState("");
   const [baslik, setBaslik] = useState("");
   const [aciklama, setAciklama] = useState("");
   const [yeniAnlatim, setYeniAnlatim] = useState<Record<string, string>>({});
   const [mesaj, setMesaj] = useState("");
   const [profilEksik, setProfilEksik] = useState(false);
   const [profiller, setProfiller] = useState<Record<string, Profil>>({});
- 
+
   async function verileriGetir() {
     const [s, a, o] = await Promise.all([
       supabase
@@ -106,7 +110,6 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
       setMesaj("Hata: " + error.message);
       return;
     }
-    setKonu("");
     setBaslik("");
     setAciklama("");
     verileriGetir();
@@ -190,6 +193,16 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
     </span>
   );
 }
+  const gorunen = sorular.filter((s) => {
+  if (filtreDers && s.ders !== filtreDers) return false;
+  if (filtreKonu && s.konu !== filtreKonu) return false;
+  if (arama) {
+    const a = arama.toLowerCase();
+    const metin = (s.baslik + " " + s.konu + " " + (s.aciklama ?? "")).toLowerCase();
+    if (!metin.includes(a)) return false;
+  }
+  return true;
+});  
 
   const kutu =
     "w-full rounded border border-gray-400 bg-white p-2 text-black placeholder-gray-500";
@@ -215,16 +228,63 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
     </span>
   </div>
 )}
-
+  <section className="flex flex-col gap-2 rounded border border-gray-600 p-4">
+  <h2 className="text-lg font-semibold">Sorulara göz at</h2>
+  <select
+    className={kutu}
+    value={filtreDers}
+    onChange={(e) => {
+      setFiltreDers(e.target.value);
+      setFiltreKonu("");
+    }}
+  >
+    <option value="">Tüm dersler</option>
+    {DERS_LISTESI.map((d) => (
+      <option key={d}>{d}</option>
+    ))}
+  </select>
+  {filtreDers && (
+    <select
+      className={kutu}
+      value={filtreKonu}
+      onChange={(e) => setFiltreKonu(e.target.value)}
+    >
+      <option value="">Tüm konular</option>
+      {DERSLER[filtreDers].map((k) => (
+        <option key={k}>{k}</option>
+      ))}
+    </select>
+  )}
+  <input
+    className={kutu}
+    placeholder="Ara (başlık, konu, açıklama)"
+    value={arama}
+    onChange={(e) => setArama(e.target.value)}
+  />
+</section>
       <section className="flex flex-col gap-2 rounded border border-gray-600 p-4">
         <h2 className="text-xl font-semibold">Neyi anlamadın?</h2>
         <select
-          className={kutu}
-          value={ders}
-          onChange={(e) => setDers(e.target.value)}
-        >
-          <option>TYT Matematik</option>
-        </select>
+  className={kutu}
+  value={ders}
+  onChange={(e) => {
+    setDers(e.target.value);
+    setKonu(DERSLER[e.target.value][0]);
+  }}
+>
+  {DERS_LISTESI.map((d) => (
+    <option key={d}>{d}</option>
+  ))}
+</select>
+<select
+  className={kutu}
+  value={konu}
+  onChange={(e) => setKonu(e.target.value)}
+>
+  {DERSLER[ders].map((k) => (
+    <option key={k}>{k}</option>
+  ))}
+</select>
         <input
           className={kutu}
           placeholder="Konu (ör. Üslü sayılar)"
