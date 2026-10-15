@@ -325,7 +325,7 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
               <p className="text-sm text-gray-400">
                 {s.ders} · {s.konu}
               </p>
-              <Yazar id={s.kullanici_id} />
+              <Yazar p={profiller[s.kullanici_id]} />
               <h3 className="text-lg font-semibold">{s.baslik}</h3>
               {s.aciklama && <p className="mt-1">{s.aciklama}</p>}
 
@@ -358,7 +358,7 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
                       key={a.id}
                       className="rounded bg-gray-800 p-3 text-sm"
                     >
-                      <Yazar id={a.kullanici_id} />
+                      <Yazar p={profiller[a.kullanici_id]} />
                       <p className="whitespace-pre-wrap">{a.icerik}</p>
                       <div className="mt-2 flex items-center gap-3">
                         {benimki ? (
