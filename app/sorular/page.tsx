@@ -178,8 +178,7 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
     );
   }
 
-  function Yazar({ id }: { id: string }) {
-  const p = profiller[id];
+  function Yazar({ p }: { p?: Profil }) {
   return (
     <span className="flex items-center gap-2 text-sm text-gray-400">
       <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-gray-700 text-xs">
@@ -285,12 +284,7 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
     <option key={k}>{k}</option>
   ))}
 </select>
-        <input
-          className={kutu}
-          placeholder="Konu (ör. Üslü sayılar)"
-          value={konu}
-          onChange={(e) => setKonu(e.target.value)}
-        />
+        
         <input
           className={kutu}
           placeholder="Kısaca neyi anlamadın? (en az 5 karakter)"
@@ -317,8 +311,8 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
       </section>
 
       <section className="flex flex-col gap-3">
-        {sorular.length === 0 && <p>Henüz soru yok. İlk soruyu sen sor!</p>}
-        {sorular.map((s) => {
+       {gorunen.length === 0 && <p>Bu filtreyle soru yok. İlk soruyu sen sor!</p>}
+       {gorunen.map((s) => {
           const buSorununAnlatimlari = anlatimlar
             .filter((a) => a.soru_id === s.id)
             .sort((x, y) => oySayisi(y.id) - oySayisi(x.id));
