@@ -5,6 +5,57 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const SIMDIKI_YIL = new Date().getFullYear();
+const AVATAR_HEDEF_BOYUTU = 950 * 1024;
+
+async function fotografiSikistir(file: File): Promise<File> {
+  const kaynakUrl = URL.createObjectURL(file);
+
+  try {
+    const resim = new Image();
+    resim.src = kaynakUrl;
+    await resim.decode();
+
+    const maksimumKenar = 1600;
+    let oran = Math.min(1, maksimumKenar / Math.max(resim.naturalWidth, resim.naturalHeight));
+    let genislik = Math.max(1, Math.round(resim.naturalWidth * oran));
+    let yukseklik = Math.max(1, Math.round(resim.naturalHeight * oran));
+    const tuval = document.createElement("canvas");
+    const context = tuval.getContext("2d");
+    if (!context) throw new Error("Fotoğraf işlenemedi. Başka bir fotoğraf dene.");
+
+    for (let deneme = 0; deneme < 12; deneme++) {
+      tuval.width = genislik;
+      tuval.height = yukseklik;
+      context.clearRect(0, 0, genislik, yukseklik);
+      context.drawImage(resim, 0, 0, genislik, yukseklik);
+
+      const kalite = Math.max(0.42, 0.88 - deneme * 0.08);
+      const blob = await new Promise<Blob | null>((resolve) =>
+        tuval.toBlob(resolve, "image/webp", kalite)
+      );
+      if (!blob) throw new Error("Fotoğraf işlenemedi. Başka bir fotoğraf dene.");
+      if (blob.size <= AVATAR_HEDEF_BOYUTU) {
+        const ad = file.name.replace(/\.[^.]+$/, "") || "profil-fotografi";
+        return new File([blob], `${ad}.webp`, {
+          type: "image/webp",
+          lastModified: Date.now(),
+        });
+      }
+
+      if (deneme >= 5) {
+        genislik = Math.max(1, Math.round(genislik * 0.82));
+        yukseklik = Math.max(1, Math.round(yukseklik * 0.82));
+      }
+    }
+
+    throw new Error("Bu fotoğraf 1 MB altına küçültülemedi. Daha küçük bir fotoğraf dene.");
+  } catch (hata) {
+    if (hata instanceof Error && hata.message.includes("1 MB altına")) throw hata;
+    throw new Error("Fotoğraf açılamadı veya küçültülemedi. JPG, PNG ya da WebP fotoğrafı dene.");
+  } finally {
+    URL.revokeObjectURL(kaynakUrl);
+  }
+}
 
 export default function Profil() {
   const router = useRouter();
@@ -19,6 +70,7 @@ export default function Profil() {
   const [onizleme, setOnizleme] = useState("");
   const [mesaj, setMesaj] = useState("");
   const [kaydediliyor, setKaydediliyor] = useState(false);
+  const [fotografIsleniyor, setFotografIsleniyor] = useState(false);
 
   useEffect(() => {
     async function basla() {
@@ -49,20 +101,35 @@ export default function Profil() {
     basla();
   }, []);
 
-  function dosyaSec(e: React.ChangeEvent<HTMLInputElement>) {
+  async function dosyaSec(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) {
-      setMesaj("Sadece jpg, png veya webp yükleyebilirsin.");
+    e.target.value = "";
+    if (!f.type.startsWith("image/")) {
+      setMesaj("Bir fotoğraf dosyası seç.");
       return;
     }
-    if (f.size > 1024 * 1024) {
-      setMesaj("Fotoğraf en fazla 1 MB olabilir.");
-      return;
-    }
+
     setMesaj("");
-    setDosya(f);
-    setOnizleme(URL.createObjectURL(f));
+    setFotografIsleniyor(true);
+    try {
+      const kucukDosya = await fotografiSikistir(f);
+      setDosya(kucukDosya);
+      const yeniOnizleme = URL.createObjectURL(kucukDosya);
+      setOnizleme((onceki) => {
+        if (onceki) URL.revokeObjectURL(onceki);
+        return yeniOnizleme;
+      });
+    } catch (hata) {
+      setDosya(null);
+      setOnizleme((onceki) => {
+        if (onceki) URL.revokeObjectURL(onceki);
+        return "";
+      });
+      setMesaj(hata instanceof Error ? hata.message : "Fotoğraf küçültülemedi.");
+    } finally {
+      setFotografIsleniyor(false);
+    }
   }
 
   async function kaydet() {
@@ -88,11 +155,10 @@ export default function Profil() {
 
     let yeniAvatar = avatarUrl;
     if (dosya) {
-      const uzanti = dosya.type.split("/")[1];
-      const yol = `${userId}/${Date.now()}.${uzanti}`;
+      const yol = `${userId}/${Date.now()}.webp`;
       const { error: yuklemeHata } = await supabase.storage
         .from("avatarlar")
-        .upload(yol, dosya, { contentType: dosya.type });
+        .upload(yol, dosya, { contentType: "image/webp" });
       if (yuklemeHata) {
         setMesaj("Fotoğraf yüklenemedi: " + yuklemeHata.message);
         setKaydediliyor(false);
@@ -133,31 +199,46 @@ export default function Profil() {
     router.push("/sorular");
   }
 
+  async function cikisYap() {
+    await supabase.auth.signOut();
+    router.push("/giris");
+  }
+
   const kutu =
-    "w-full rounded border border-gray-400 bg-white p-2 text-black placeholder-gray-500";
+    "w-full rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20";
   const gosterilen = onizleme || avatarUrl;
 
   return (
-    <main className="mx-auto flex max-w-sm flex-col gap-3 p-6">
-      <h1 className="text-3xl font-bold">Profilini oluştur</h1>
-      <p className="text-sm text-gray-400">
+    <main className="mx-auto mt-8 mb-24 flex w-full max-w-2xl flex-col gap-5 rounded-3xl border border-white/10 bg-slate-900/85 p-5 text-slate-100 shadow-2xl shadow-black/25 sm:mt-12 sm:gap-6 sm:p-9">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Topluluğun bir parçasısın</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight">Profilini oluştur</h1>
+        </div>
+        <button onClick={cikisYap} className="shrink-0 rounded-xl border border-white/10 px-3 py-2 text-xs font-medium text-slate-400 transition hover:border-rose-300/30 hover:bg-rose-300/10 hover:text-rose-200 sm:text-sm">
+          Çıkış yap
+        </button>
+      </div>
+      <p className="text-sm leading-6 text-slate-400">
         Gerçek adını yazmak zorunda değilsin. Telefon, adres, okul adı gibi
         kişisel bilgileri yazma.
       </p>
 
-      <div className="flex items-center gap-4">
-        <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-gray-700">
+      <div className="flex items-center gap-4 rounded-2xl border border-white/5 bg-slate-950/40 p-4">
+        <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-cyan-300/20 bg-slate-800 ring-4 ring-cyan-300/5">
           {gosterilen ? (
             <img src={gosterilen} alt="Profil" className="h-full w-full object-cover" />
           ) : (
             <span className="text-3xl">👤</span>
           )}
         </div>
-        <label className="cursor-pointer rounded bg-gray-600 px-3 py-2 text-sm text-white">
+        <label className="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
           Fotoğraf seç
-          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={dosyaSec} className="hidden" />
+          <input type="file" accept="image/*" onChange={dosyaSec} className="hidden" />
         </label>
       </div>
+      {fotografIsleniyor && <p className="text-sm text-cyan-200">Fotoğraf 1 MB altına küçültülüyor…</p>}
+      {dosya && !fotografIsleniyor && <p className="text-xs text-slate-500">Hazır: {(dosya.size / 1024).toFixed(0)} KB · WebP</p>}
 
       <input className={kutu} placeholder="İsim (isteğe bağlı)" maxLength={40} value={ad} onChange={(e) => setAd(e.target.value)} />
       <input className={kutu} placeholder="Kullanıcı adı (zorunlu)" maxLength={20} value={takmaAd} onChange={(e) => setTakmaAd(e.target.value)} />
@@ -177,7 +258,7 @@ export default function Profil() {
             />
           )}
           {!yasOnayi && (
-            <label className="flex items-start gap-2 text-sm text-gray-300">
+            <label className="flex items-start gap-3 text-sm leading-5 text-slate-300">
               <input
                 type="checkbox"
                 checked={yasOnayi}
@@ -190,13 +271,13 @@ export default function Profil() {
         </>
       )}
 
-      <button onClick={kaydet} disabled={kaydediliyor} className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50">
-        {kaydediliyor ? "Kaydediliyor..." : "Kaydet"}
+      <button onClick={kaydet} disabled={kaydediliyor || fotografIsleniyor} className="rounded-xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50">
+        {fotografIsleniyor ? "Fotoğraf hazırlanıyor..." : kaydediliyor ? "Kaydediliyor..." : "Kaydet"}
       </button>
-      <button onClick={simdilikGec} className="text-sm text-gray-400 underline">
+      <button onClick={simdilikGec} className="self-center py-2 text-sm text-slate-400 underline underline-offset-4 hover:text-slate-200">
         Şimdilik geç
       </button>
-      {mesaj && <p className="text-red-400">{mesaj}</p>}
+      {mesaj && <p role="alert" className="rounded-xl border border-rose-300/20 bg-rose-300/10 p-3 text-sm leading-5 text-rose-200">{mesaj}</p>}
     </main>
   );
 }
