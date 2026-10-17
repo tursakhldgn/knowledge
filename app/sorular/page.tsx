@@ -71,7 +71,7 @@ export default function Sorular() {
     if (o.data) setOylar(o.data);
 
     const { data: p } = await supabase
-  .from("profiller")
+  .from("profil_kartlari")
   .select("kullanici_id, takma_ad, avatar_url");
 if (p) {
   const harita: Record<string, Profil> = {};
