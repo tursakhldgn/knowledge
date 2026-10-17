@@ -33,15 +33,25 @@ export default function Giris() {
     const { data, error } = await supabase.auth.signUp({
       email,
       password: sifre,
+      options: {
+        data: { dogum_yili: yil, yas_onayi: true },
+      },
     });
     if (error) {
       setMesaj(error.message);
       return;
     }
-    if (data.session) {
+    if (data.session && data.user) {
       const { error: profilHata } = await supabase
         .from("profiller")
-        .insert({ dogum_yili: yil, yas_onayi: true });
+        .upsert(
+          {
+            kullanici_id: data.user.id,
+            dogum_yili: yil,
+            yas_onayi: true,
+          },
+          { onConflict: "kullanici_id" }
+        );
       if (profilHata) {
         setMesaj("Profil kaydedilemedi: " + profilHata.message);
         return;
@@ -54,7 +64,7 @@ export default function Giris() {
 
   async function girisYap() {
     setMesaj("");
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password: sifre,
     });
@@ -62,6 +72,39 @@ export default function Giris() {
       setMesaj(error.message);
       return;
     }
+
+    const { data: profil, error: profilOkumaHata } = await supabase
+      .from("profiller")
+      .select("kullanici_id")
+      .eq("kullanici_id", data.user.id)
+      .maybeSingle();
+
+    if (profilOkumaHata) {
+      setMesaj("Profil kontrol edilemedi: " + profilOkumaHata.message);
+      return;
+    }
+
+    if (!profil) {
+      const yil = Number(data.user.user_metadata?.dogum_yili);
+      if (yil && data.user.user_metadata?.yas_onayi === true) {
+        const { error: profilHata } = await supabase.from("profiller").upsert(
+          {
+            kullanici_id: data.user.id,
+            dogum_yili: yil,
+            yas_onayi: true,
+          },
+          { onConflict: "kullanici_id" }
+        );
+
+        if (profilHata) {
+          setMesaj("Profil oluşturulamadı: " + profilHata.message);
+          return;
+        }
+      }
+      router.push("/profil");
+      return;
+    }
+
     router.push("/sorular");
   }
 

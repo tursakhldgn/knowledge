@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+const SIMDIKI_YIL = new Date().getFullYear();
+
 export default function Profil() {
   const router = useRouter();
   const [userId, setUserId] = useState("");
@@ -11,6 +13,8 @@ export default function Profil() {
   const [takmaAd, setTakmaAd] = useState("");
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [dogumYili, setDogumYili] = useState("");
+  const [yasOnayi, setYasOnayi] = useState(false);
   const [dosya, setDosya] = useState<File | null>(null);
   const [onizleme, setOnizleme] = useState("");
   const [mesaj, setMesaj] = useState("");
@@ -26,7 +30,7 @@ export default function Profil() {
       setUserId(data.user.id);
       const { data: p } = await supabase
         .from("profiller")
-        .select("takma_ad, ad, biyografi, avatar_url")
+        .select("takma_ad, ad, biyografi, avatar_url, dogum_yili, yas_onayi")
         .eq("kullanici_id", data.user.id)
         .maybeSingle();
       if (p) {
@@ -34,6 +38,12 @@ export default function Profil() {
         setTakmaAd(p.takma_ad ?? "");
         setBio(p.biyografi ?? "");
         setAvatarUrl(p.avatar_url ?? "");
+        setDogumYili(p.dogum_yili ? String(p.dogum_yili) : "");
+        setYasOnayi(p.yas_onayi === true);
+      } else {
+        const metadataYili = data.user.user_metadata?.dogum_yili;
+        if (metadataYili) setDogumYili(String(metadataYili));
+        setYasOnayi(data.user.user_metadata?.yas_onayi === true);
       }
     }
     basla();
@@ -57,6 +67,19 @@ export default function Profil() {
 
   async function kaydet() {
     setMesaj("");
+    if (!userId) {
+      setMesaj("Oturum bilgisi yüklenemedi. Sayfayı yenileyip tekrar dene.");
+      return;
+    }
+    const yil = Number(dogumYili);
+    if (!yil || yil < 1900 || yil > SIMDIKI_YIL || SIMDIKI_YIL - yil < 15) {
+      setMesaj("15 yaşından büyük olduğunu doğrulamak için geçerli doğum yılını yaz.");
+      return;
+    }
+    if (!yasOnayi) {
+      setMesaj("15 yaşından büyük olduğunu onaylamalısın.");
+      return;
+    }
     if (!/^[a-zA-Z0-9_]{3,20}$/.test(takmaAd)) {
       setMesaj("Kullanıcı adı 3-20 karakter olmalı: harf, rakam ve _ kullanabilirsin.");
       return;
@@ -78,22 +101,27 @@ export default function Profil() {
       yeniAvatar = supabase.storage.from("avatarlar").getPublicUrl(yol).data.publicUrl;
     }
 
-    const { error } = await supabase
-      .from("profiller")
-      .update({
+    const { error } = await supabase.from("profiller").upsert(
+      {
+        kullanici_id: userId,
+        dogum_yili: yil,
+        yas_onayi: yasOnayi,
         ad: ad || null,
         takma_ad: takmaAd,
         biyografi: bio || null,
         avatar_url: yeniAvatar || null,
-      })
-      .eq("kullanici_id", userId);
+      },
+      { onConflict: "kullanici_id" }
+    );
 
     setKaydediliyor(false);
     if (error) {
       setMesaj(
         error.code === "23505"
           ? "Bu kullanıcı adı alınmış, başka bir tane dene."
-          : "Hata: " + error.message
+          : error.code === "42501"
+            ? "Supabase tablo yetkisi eksik. SQL Editor'da profiller tablosu için SELECT, INSERT ve UPDATE izni ver."
+            : "Hata: " + error.message
       );
       return;
     }
@@ -134,6 +162,33 @@ export default function Profil() {
       <input className={kutu} placeholder="İsim (isteğe bağlı)" maxLength={40} value={ad} onChange={(e) => setAd(e.target.value)} />
       <input className={kutu} placeholder="Kullanıcı adı (zorunlu)" maxLength={20} value={takmaAd} onChange={(e) => setTakmaAd(e.target.value)} />
       <textarea className={kutu} rows={3} maxLength={200} placeholder="Biyografi (en fazla 200 karakter)" value={bio} onChange={(e) => setBio(e.target.value)} />
+
+      {(!dogumYili || !yasOnayi) && (
+        <>
+          {!dogumYili && (
+            <input
+              className={kutu}
+              type="number"
+              min="1900"
+              max={SIMDIKI_YIL - 15}
+              placeholder="Doğum yılın"
+              value={dogumYili}
+              onChange={(e) => setDogumYili(e.target.value)}
+            />
+          )}
+          {!yasOnayi && (
+            <label className="flex items-start gap-2 text-sm text-gray-300">
+              <input
+                type="checkbox"
+                checked={yasOnayi}
+                onChange={(e) => setYasOnayi(e.target.checked)}
+                className="mt-1"
+              />
+              15 yaşından büyük olduğumu onaylıyorum.
+            </label>
+          )}
+        </>
+      )}
 
       <button onClick={kaydet} disabled={kaydediliyor} className="rounded bg-blue-600 px-4 py-2 text-white disabled:opacity-50">
         {kaydediliyor ? "Kaydediliyor..." : "Kaydet"}
