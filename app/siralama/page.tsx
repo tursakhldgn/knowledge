@@ -108,7 +108,7 @@ export default function Siralama() {
   const benimSiralamam = liste.findIndex((kisi) => kisi.kullanici_id === benimId);
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-3xl px-4 pt-8 pb-28 text-slate-100 sm:px-6 sm:pt-12">
+    <main className="mx-auto min-h-dvh w-full max-w-5xl px-4 pt-6 pb-28 text-slate-100 sm:px-6 sm:pt-10 xl:px-8">
       <header className="mb-6 rounded-3xl border border-amber-200/10 bg-gradient-to-br from-amber-300/10 via-slate-900 to-slate-900 p-6 sm:p-8">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">Katkıların görünür olsun</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight">Topluluk sıralaması</h1>

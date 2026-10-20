@@ -7,30 +7,71 @@ import { supabase } from "@/lib/supabase";
 
 export default function Menu() {
   const pathname = usePathname();
-  const [girisVar, setGirisVar] = useState(false);
+  const [kullaniciId, setKullaniciId] = useState("");
+  const [okunmamis, setOkunmamis] = useState(0);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setGirisVar(!!data.user));
+    let etkin = true;
+    supabase.auth.getUser().then(({ data }) => { if (etkin) setKullaniciId(data.user?.id ?? ""); });
     const { data: dinleyici } = supabase.auth.onAuthStateChange(
-      (_olay, oturum) => setGirisVar(!!oturum?.user)
+      (_olay, oturum) => setKullaniciId(oturum?.user?.id ?? "")
     );
-    return () => dinleyici.subscription.unsubscribe();
+    return () => {
+      etkin = false;
+      dinleyici.subscription.unsubscribe();
+    };
   }, []);
+
+  useEffect(() => {
+    if (!kullaniciId) {
+      setOkunmamis(0);
+      return;
+    }
+    let etkin = true;
+    const sayiyiGetir = async () => {
+      const { count } = await supabase
+        .from("bildirimler")
+        .select("id", { count: "exact", head: true })
+        .is("okundu_at", null);
+      if (etkin) setOkunmamis(count ?? 0);
+    };
+    void sayiyiGetir();
+    const kanal = supabase
+      .channel(`bildirim-sayaci-${kullaniciId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "bildirimler", filter: `alici_id=eq.${kullaniciId}` }, () => {
+        void sayiyiGetir();
+      })
+      .subscribe();
+    return () => {
+      etkin = false;
+      void supabase.removeChannel(kanal);
+    };
+  }, [kullaniciId]);
+
+  const girisVar = !!kullaniciId;
 
   return (
     <>
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-slate-950/90 px-4 py-3 text-slate-100 backdrop-blur-xl sm:px-6">
         <Link href="/" className="font-bold tracking-tight">Knowledge</Link>
-        {!girisVar && (
-          <Link href="/giris" className="rounded-lg bg-cyan-300 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">
-            Giriş / Kayıt
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          {girisVar && (
+            <Link href="/bildirimler" aria-label={`Bildirimler${okunmamis ? `, ${okunmamis} okunmamış` : ""}`} className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-white/10 ${pathname === "/bildirimler" ? "text-cyan-200" : "text-slate-300"}`}>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
+              {okunmamis > 0 && <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{okunmamis > 99 ? "99+" : okunmamis}</span>}
+            </Link>
+          )}
+          {!girisVar && (
+            <Link href="/giris" className="rounded-lg bg-cyan-300 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">
+              Giriş / Kayıt
+            </Link>
+          )}
+        </div>
       </header>
 
       {girisVar && (
         <nav aria-label="Ana menü" className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-slate-950/95 pb-[env(safe-area-inset-bottom)] text-slate-300 shadow-[0_-12px_40px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-          <div className="mx-auto grid max-w-lg grid-cols-4 px-2 pt-2">
+          <div className="mx-auto grid max-w-3xl grid-cols-4 px-2 pt-2">
             {[
               { href: "/sorular", label: "Ana sayfa", icon: "home" },
               { href: "/mesajlar", label: "DM", icon: "chat" },

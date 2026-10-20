@@ -209,8 +209,8 @@ export default function Profil() {
   const gosterilen = onizleme || avatarUrl;
 
   return (
-    <main className="mx-auto mt-8 mb-24 flex w-full max-w-2xl flex-col gap-5 rounded-3xl border border-white/10 bg-slate-900/85 p-5 text-slate-100 shadow-2xl shadow-black/25 sm:mt-12 sm:gap-6 sm:p-9">
-      <div className="flex items-start justify-between gap-3">
+    <main className="mx-auto mt-5 mb-24 grid w-[calc(100%-1.5rem)] max-w-5xl grid-cols-1 gap-5 rounded-3xl border border-white/10 bg-slate-900/85 p-4 text-slate-100 shadow-2xl shadow-black/25 sm:mt-8 sm:w-[calc(100%-3rem)] sm:gap-6 sm:p-7 xl:mt-10 xl:grid-cols-2 xl:gap-x-10 xl:gap-y-6 xl:p-10">
+      <div className="flex min-w-0 items-start justify-between gap-3 xl:col-span-2">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Topluluğun bir parçasısın</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight">Profilini oluştur</h1>
@@ -219,12 +219,12 @@ export default function Profil() {
           Çıkış yap
         </button>
       </div>
-      <p className="text-sm leading-6 text-slate-400">
+      <p className="text-sm leading-6 text-slate-400 xl:col-span-2">
         Gerçek adını yazmak zorunda değilsin. Telefon, adres, okul adı gibi
         kişisel bilgileri yazma.
       </p>
 
-      <div className="flex items-center gap-4 rounded-2xl border border-white/5 bg-slate-950/40 p-4">
+      <div className="flex min-w-0 items-center gap-4 rounded-2xl border border-white/5 bg-slate-950/40 p-4 xl:col-span-2">
         <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-cyan-300/20 bg-slate-800 ring-4 ring-cyan-300/5">
           {gosterilen ? (
             <img src={gosterilen} alt="Profil" className="h-full w-full object-cover" />
@@ -242,7 +242,7 @@ export default function Profil() {
 
       <input className={kutu} placeholder="İsim (isteğe bağlı)" maxLength={40} value={ad} onChange={(e) => setAd(e.target.value)} />
       <input className={kutu} placeholder="Kullanıcı adı (zorunlu)" maxLength={20} value={takmaAd} onChange={(e) => setTakmaAd(e.target.value)} />
-      <textarea className={kutu} rows={3} maxLength={200} placeholder="Biyografi (en fazla 200 karakter)" value={bio} onChange={(e) => setBio(e.target.value)} />
+      <textarea className={`${kutu} xl:col-span-2`} rows={3} maxLength={200} placeholder="Biyografi (en fazla 200 karakter)" value={bio} onChange={(e) => setBio(e.target.value)} />
 
       {(!dogumYili || !yasOnayi) && (
         <>
@@ -271,13 +271,13 @@ export default function Profil() {
         </>
       )}
 
-      <button onClick={kaydet} disabled={kaydediliyor || fotografIsleniyor} className="rounded-xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50">
+      <button onClick={kaydet} disabled={kaydediliyor || fotografIsleniyor} className="rounded-xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50 xl:col-span-2">
         {fotografIsleniyor ? "Fotoğraf hazırlanıyor..." : kaydediliyor ? "Kaydediliyor..." : "Kaydet"}
       </button>
-      <button onClick={simdilikGec} className="self-center py-2 text-sm text-slate-400 underline underline-offset-4 hover:text-slate-200">
+      <button onClick={simdilikGec} className="justify-self-center py-2 text-sm text-slate-400 underline underline-offset-4 hover:text-slate-200 xl:col-span-2">
         Şimdilik geç
       </button>
-      {mesaj && <p role="alert" className="rounded-xl border border-rose-300/20 bg-rose-300/10 p-3 text-sm leading-5 text-rose-200">{mesaj}</p>}
+      {mesaj && <p role="alert" className="rounded-xl border border-rose-300/20 bg-rose-300/10 p-3 text-sm leading-5 text-rose-200 xl:col-span-2">{mesaj}</p>}
     </main>
   );
 }

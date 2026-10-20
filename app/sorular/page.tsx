@@ -252,7 +252,7 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
     "w-full rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20";
 
   return (
-    <main className="mx-auto grid min-h-screen w-full max-w-6xl grid-cols-1 content-start gap-5 px-4 pt-8 pb-28 text-slate-100 sm:px-6 lg:grid-cols-[minmax(0,1fr)_350px] lg:pt-12">
+    <main className="mx-auto grid min-h-dvh w-full max-w-screen-2xl grid-cols-1 content-start gap-5 px-4 pt-6 pb-28 text-slate-100 sm:px-6 sm:pt-8 xl:grid-cols-[minmax(0,1fr)_380px] xl:gap-7 xl:px-8 xl:pt-10">
       <header className="relative col-span-full overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/70 p-6 shadow-2xl shadow-black/20 sm:p-10">
         <div className="pointer-events-none absolute -right-12 -top-20 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl" />
         <div className="relative max-w-2xl">
@@ -284,7 +284,7 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
     </span>
   </div>
 )}
-      <section className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-900/75 p-4 shadow-lg shadow-black/10 sm:p-5">
+      <section className="flex min-w-0 flex-col gap-3 rounded-2xl border border-white/10 bg-slate-900/75 p-4 shadow-lg shadow-black/10 sm:p-5">
   <div className="mb-1">
     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">Keşfet</p>
     <h2 className="mt-1 text-lg font-semibold">Sorulara göz at</h2>
@@ -323,7 +323,7 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
 </section>
 
 
-      <section className="flex min-w-0 flex-col gap-4 lg:col-start-1">
+      <section className="flex min-w-0 flex-col gap-4 xl:col-start-1">
        {gorunen.length === 0 && (
          <div className="rounded-2xl border border-dashed border-white/15 bg-slate-900/50 px-6 py-12 text-center">
            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-300/10 text-2xl text-cyan-200">?</span>
@@ -442,7 +442,7 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
         })}
       </section>
 
-      <section id="soru-paylas" className="self-start flex flex-col gap-3 rounded-2xl border border-cyan-300/15 bg-gradient-to-b from-slate-900 to-slate-950 p-5 shadow-xl shadow-black/20 lg:sticky lg:top-20 lg:col-start-2 sm:p-6">
+      <section id="soru-paylas" className="flex min-w-0 flex-col gap-3 rounded-2xl border border-cyan-300/15 bg-gradient-to-b from-slate-900 to-slate-950 p-5 shadow-xl shadow-black/20 xl:sticky xl:top-20 xl:col-start-2 xl:self-start sm:p-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">Topluluğa katkıda bulun</p>
           <h2 className="mt-1 text-xl font-semibold">Neyi anlamadın?</h2>

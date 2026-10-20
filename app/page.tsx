@@ -21,7 +21,7 @@ const features = [
 export default function Home() {
   return (
     <main className="min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_50%_0%,_rgba(8,145,178,0.17),_transparent_45%),#070b14] px-4 pt-10 pb-28 text-slate-100 sm:px-6 sm:pt-16">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto w-full max-w-screen-2xl">
         <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/70 px-6 py-12 shadow-2xl shadow-black/30 sm:px-12 sm:py-20">
           <div className="pointer-events-none absolute -right-16 -top-20 h-80 w-80 rounded-full bg-cyan-300/10 blur-3xl" />
           <div className="relative max-w-3xl">
