@@ -9,6 +9,7 @@ type Bildirim = {
   id: string;
   gonderen_id: string | null;
   tur: "oy" | "mesaj";
+  anlatim_id: string | null;
   olusturma_tarihi: string;
   okundu_at: string | null;
 };
@@ -30,7 +31,7 @@ export default function Bildirimler() {
     }
     const { data, error } = await supabase
       .from("bildirimler")
-      .select("id, gonderen_id, tur, olusturma_tarihi, okundu_at")
+      .select("id, gonderen_id, tur, anlatim_id, olusturma_tarihi, okundu_at")
       .order("olusturma_tarihi", { ascending: false })
       .limit(100);
     if (error) {
@@ -118,7 +119,9 @@ export default function Bildirimler() {
       <section aria-label="Bildirim listesi" className="mt-7 overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70">
         {yukleniyor ? <p className="p-6 text-sm text-slate-400">Bildirimler yükleniyor…</p> : bildirimler.length ? bildirimler.map((item) => {
           const profil = item.gonderen_id ? profiller[item.gonderen_id] : undefined;
-          const href = item.tur === "mesaj" ? "/mesajlar" : "/sorular";
+          const href = item.tur === "mesaj"
+            ? item.gonderen_id ? `/mesajlar?kullanici=${item.gonderen_id}` : "/mesajlar"
+            : item.anlatim_id ? `/sorular?anlatim=${item.anlatim_id}#anlatim-${item.anlatim_id}` : "/sorular";
           return (
             <Link key={item.id} href={href} onClick={() => { if (!item.okundu_at) void okunduYap(item.id); }} className={`flex items-center gap-4 border-b border-white/5 p-4 transition last:border-b-0 hover:bg-white/5 sm:p-5 ${item.okundu_at ? "" : "bg-cyan-300/[0.06]"}`}>
               <span className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-slate-800 text-lg text-cyan-100">

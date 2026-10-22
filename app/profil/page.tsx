@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -16,7 +17,7 @@ async function fotografiSikistir(file: File): Promise<File> {
     await resim.decode();
 
     const maksimumKenar = 1600;
-    let oran = Math.min(1, maksimumKenar / Math.max(resim.naturalWidth, resim.naturalHeight));
+    const oran = Math.min(1, maksimumKenar / Math.max(resim.naturalWidth, resim.naturalHeight));
     let genislik = Math.max(1, Math.round(resim.naturalWidth * oran));
     let yukseklik = Math.max(1, Math.round(resim.naturalHeight * oran));
     const tuval = document.createElement("canvas");
@@ -99,7 +100,7 @@ export default function Profil() {
       }
     }
     basla();
-  }, []);
+  }, [router]);
 
   async function dosyaSec(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -223,6 +224,7 @@ export default function Profil() {
         Gerçek adını yazmak zorunda değilsin. Telefon, adres, okul adı gibi
         kişisel bilgileri yazma.
       </p>
+      {userId && <Link href={`/profil/${userId}`} className="w-fit text-sm font-medium text-cyan-200 underline underline-offset-4 hover:text-cyan-100 xl:col-span-2">Profilini görüntüle ve katkılarını gör</Link>}
 
       <div className="flex min-w-0 items-center gap-4 rounded-2xl border border-white/5 bg-slate-950/40 p-4 xl:col-span-2">
         <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-cyan-300/20 bg-slate-800 ring-4 ring-cyan-300/5">

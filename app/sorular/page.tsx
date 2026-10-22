@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { DERSLER, DERS_LISTESI } from "@/lib/dersler";
@@ -44,6 +45,8 @@ export default function Sorular() {
   const [konu, setKonu] = useState(DERSLER[DERS_LISTESI[1]][0]);
   const [filtreDers, setFiltreDers] = useState("");
   const [filtreKonu, setFiltreKonu] = useState("");
+  const [filtreDurum, setFiltreDurum] = useState("hepsi");
+  const [sirala, setSirala] = useState("yeni");
   const [arama, setArama] = useState("");
   const [baslik, setBaslik] = useState("");
   const [aciklama, setAciklama] = useState("");
@@ -52,6 +55,14 @@ export default function Sorular() {
   const [profilEksik, setProfilEksik] = useState(false);
   const [profiller, setProfiller] = useState<Record<string, Profil>>({});
   const [anlatimHata, setAnlatimHata] = useState<Record<string, string>>({});
+  const [duzenlenenSoruId, setDuzenlenenSoruId] = useState("");
+  const [soruDersTaslak, setSoruDersTaslak] = useState("");
+  const [soruKonuTaslak, setSoruKonuTaslak] = useState("");
+  const [soruBaslikTaslak, setSoruBaslikTaslak] = useState("");
+  const [soruAciklamaTaslak, setSoruAciklamaTaslak] = useState("");
+  const [duzenlenenAnlatimId, setDuzenlenenAnlatimId] = useState("");
+  const [anlatimTaslak, setAnlatimTaslak] = useState("");
+  const deepLinkRef = useRef("");
   
   async function verileriGetir() {
     const [s, a, o] = await Promise.all([
@@ -129,7 +140,7 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
       if (yenilemeZamani) clearTimeout(yenilemeZamani);
       if (kanal) void supabase.removeChannel(kanal);
     };
-  }, []);
+  }, [router]);
 
   async function soruEkle() {
     setMesaj("");
@@ -184,6 +195,38 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
     verileriGetir();
   }
 
+  async function soruGuncelle(soruId: string) {
+    const baslikYeni = soruBaslikTaslak.trim();
+    if (baslikYeni.length < 5) {
+      setMesaj("Başlık en az 5 karakter olmalı.");
+      return;
+    }
+    const { error } = await supabase.from("sorular").update({ ders: soruDersTaslak, konu: soruKonuTaslak, baslik: baslikYeni, aciklama: soruAciklamaTaslak.trim() || null }).eq("id", soruId);
+    if (error) {
+      setMesaj("Soru güncellenemedi. Tekrar dene.");
+      return;
+    }
+    setDuzenlenenSoruId("");
+    setMesaj("Soru güncellendi.");
+    void verileriGetir();
+  }
+
+  async function anlatimGuncelle(anlatimId: string) {
+    const icerik = anlatimTaslak.trim();
+    if (icerik.length < 10) {
+      setMesaj("Anlatım en az 10 karakter olmalı.");
+      return;
+    }
+    const { error } = await supabase.from("anlatimlar").update({ icerik }).eq("id", anlatimId);
+    if (error) {
+      setMesaj("Anlatım güncellenemedi. Tekrar dene.");
+      return;
+    }
+    setDuzenlenenAnlatimId("");
+    setMesaj("Anlatım güncellendi.");
+    void verileriGetir();
+  }
+
   async function oyVer(anlatimId: string, verdiMi: boolean) {
     setMesaj("");
     if (verdiMi) {
@@ -224,7 +267,7 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
   }
 
   function Yazar({ p }: { p?: Profil }) {
-  return (
+  const icerik = (
     <span className="flex items-center gap-2 text-sm text-gray-400">
       <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-gray-700 text-xs">
         {p?.avatar_url ? (
@@ -236,17 +279,46 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
       {p?.takma_ad ? "@" + p.takma_ad : "isimsiz"}
     </span>
   );
+  return p?.kullanici_id ? <Link href={`/profil/${p.kullanici_id}`} className="w-fit rounded-md outline-none hover:text-cyan-200 focus-visible:ring-2 focus-visible:ring-cyan-300">{icerik}</Link> : icerik;
 }
+
   const gorunen = sorular.filter((s) => {
-  if (filtreDers && s.ders !== filtreDers) return false;
-  if (filtreKonu && s.konu !== filtreKonu) return false;
-  if (arama) {
-    const a = arama.toLowerCase();
-    const metin = (s.baslik + " " + s.konu + " " + (s.aciklama ?? "")).toLowerCase();
-    if (!metin.includes(a)) return false;
-  }
-  return true;
-});  
+    const soruAnlatimlari = anlatimlar.filter((anlatim) => anlatim.soru_id === s.id);
+    if (filtreDers && s.ders !== filtreDers) return false;
+    if (filtreKonu && s.konu !== filtreKonu) return false;
+    if (filtreDurum === "cevapli" && !soruAnlatimlari.length) return false;
+    if (filtreDurum === "cevapsiz" && soruAnlatimlari.length) return false;
+    if (arama.trim()) {
+      const sorgu = arama.trim().toLocaleLowerCase("tr-TR");
+      const yazar = profiller[s.kullanici_id]?.takma_ad ?? "";
+      const metin = `${s.baslik} ${s.konu} ${s.ders} ${s.aciklama ?? ""} ${yazar} ${soruAnlatimlari.map((a) => a.icerik).join(" ")}`.toLocaleLowerCase("tr-TR");
+      if (!metin.includes(sorgu)) return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    if (sirala === "oy") {
+      const aOy = anlatimlar.filter((item) => item.soru_id === a.id).reduce((toplam, item) => toplam + oySayisi(item.id), 0);
+      const bOy = anlatimlar.filter((item) => item.soru_id === b.id).reduce((toplam, item) => toplam + oySayisi(item.id), 0);
+      return bOy - aOy || Date.parse(b.olusturma_tarihi) - Date.parse(a.olusturma_tarihi);
+    }
+    if (sirala === "anlatim") {
+      const fark = anlatimlar.filter((item) => item.soru_id === b.id).length - anlatimlar.filter((item) => item.soru_id === a.id).length;
+      return fark || Date.parse(b.olusturma_tarihi) - Date.parse(a.olusturma_tarihi);
+    }
+    return Date.parse(b.olusturma_tarihi) - Date.parse(a.olusturma_tarihi);
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const anlatimId = params.get("anlatim");
+    const soruId = params.get("soru");
+    const hedef = anlatimId ? `anlatim-${anlatimId}` : soruId ? `soru-${soruId}` : "";
+    const yuklendi = anlatimId ? anlatimlar.some((item) => item.id === anlatimId) : soruId ? sorular.some((item) => item.id === soruId) : false;
+    if (!hedef || !yuklendi || deepLinkRef.current === hedef) return;
+    deepLinkRef.current = hedef;
+    const zamanlayici = setTimeout(() => document.getElementById(hedef)?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+    return () => clearTimeout(zamanlayici);
+  }, [anlatimlar, sorular]);
 
   const kutu =
     "w-full rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20";
@@ -271,7 +343,7 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
   <div className="col-span-full flex items-center justify-between gap-3 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm text-amber-100">
     <span>Profilini tamamla: kullanıcı adı seç, istersen fotoğraf ekle.</span>
     <span className="flex shrink-0 gap-3">
-      <a href="/profil" className="text-blue-400 underline">Tamamla</a>
+    <Link href="/profil" className="text-blue-400 underline">Tamamla</Link>
       <button
         onClick={() => {
           localStorage.setItem("profilHatirlatma", String(Date.now()));
@@ -314,9 +386,21 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
       ))}
     </select>
   )}
+  <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+    <select className={kutu} value={filtreDurum} onChange={(e) => setFiltreDurum(e.target.value)} aria-label="Yanıt durumuna göre filtrele">
+      <option value="hepsi">Tüm sorular</option>
+      <option value="cevapli">Yanıtı olanlar</option>
+      <option value="cevapsiz">Yanıtsız sorular</option>
+    </select>
+    <select className={kutu} value={sirala} onChange={(e) => setSirala(e.target.value)} aria-label="Soruları sırala">
+      <option value="yeni">En yeni</option>
+      <option value="oy">En çok faydalı oy</option>
+      <option value="anlatim">En çok anlatım</option>
+    </select>
+  </div>
   <input
     className={kutu}
-    placeholder="Ara (başlık, konu, açıklama)"
+    placeholder="Soru, anlatım veya kullanıcı ara"
     value={arama}
     onChange={(e) => setArama(e.target.value)}
   />
@@ -340,22 +424,40 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
           return (
             <article
               key={s.id}
+              id={`soru-${s.id}`}
               className="rounded-2xl border border-white/10 bg-slate-900/75 p-5 shadow-lg shadow-black/10 transition duration-200 hover:-translate-y-0.5 hover:border-cyan-300/25 hover:shadow-xl hover:shadow-black/20 sm:p-6"
             >
               <p className="text-sm text-gray-400">
                 {s.ders} · {s.konu}
               </p>
               <Yazar p={profiller[s.kullanici_id]} />
-              <h3 className="mt-3 text-xl font-bold leading-snug tracking-tight">{s.baslik}</h3>
-              {s.aciklama && <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{s.aciklama}</p>}
+              {duzenlenenSoruId === s.id ? (
+                <div className="mt-3 flex min-w-0 flex-col gap-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <select className={kutu} value={soruDersTaslak} onChange={(e) => { setSoruDersTaslak(e.target.value); setSoruKonuTaslak(DERSLER[e.target.value][0]); }} aria-label="Ders">
+                      {DERS_LISTESI.map((dersSecenegi) => <option key={dersSecenegi}>{dersSecenegi}</option>)}
+                    </select>
+                    <select className={kutu} value={soruKonuTaslak} onChange={(e) => setSoruKonuTaslak(e.target.value)} aria-label="Konu">
+                      {(DERSLER[soruDersTaslak] ?? []).map((konuSecenegi) => <option key={konuSecenegi}>{konuSecenegi}</option>)}
+                    </select>
+                  </div>
+                  <input className={kutu} maxLength={180} value={soruBaslikTaslak} onChange={(e) => setSoruBaslikTaslak(e.target.value)} aria-label="Soru başlığı" />
+                  <textarea className={kutu} rows={3} maxLength={2000} value={soruAciklamaTaslak} onChange={(e) => setSoruAciklamaTaslak(e.target.value)} placeholder="Açıklama (isteğe bağlı)" aria-label="Soru açıklaması" />
+                  <div className="flex flex-wrap gap-3">
+                    <button onClick={() => void soruGuncelle(s.id)} className="min-h-10 rounded-lg bg-cyan-300 px-4 py-2 font-semibold text-slate-950">Değişiklikleri kaydet</button>
+                    <button onClick={() => setDuzenlenenSoruId("")} className="min-h-10 rounded-lg border border-white/10 px-4 py-2 text-slate-300">Vazgeç</button>
+                  </div>
+                </div>
+              ) : <>
+                <h3 className="mt-3 text-xl font-bold leading-snug tracking-tight">{s.baslik}</h3>
+                {s.aciklama && <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-300">{s.aciklama}</p>}
+              </>}
 
               {s.kullanici_id === benimId ? (
-                <button
-                  onClick={() => soruSil(s.id)}
-                  className="mt-2 text-sm text-red-400 underline"
-                >
-                  Soruyu sil
-                </button>
+                <div className="mt-2 flex flex-wrap gap-4">
+                  <button onClick={() => { setDuzenlenenSoruId(s.id); setSoruDersTaslak(s.ders); setSoruKonuTaslak(s.konu); setSoruBaslikTaslak(s.baslik); setSoruAciklamaTaslak(s.aciklama ?? ""); }} className="min-h-10 text-sm text-cyan-200 underline underline-offset-4">Düzenle</button>
+                  <button onClick={() => soruSil(s.id)} className="min-h-10 text-sm text-red-400 underline underline-offset-4">Soruyu sil</button>
+                </div>
               ) : (
                 <button
                   onClick={() => sikayetEt("soru", s.id)}
@@ -376,16 +478,26 @@ if (!p?.takma_ad && Date.now() - son > 3 * 24 * 60 * 60 * 1000) {
                   return (
                     <div
                       key={a.id}
+                      id={`anlatim-${a.id}`}
                       className="rounded-xl border border-white/5 bg-slate-950/70 p-4 text-sm"
                     >
                       <Yazar p={profiller[a.kullanici_id]} />
-                      <p className="whitespace-pre-wrap">{a.icerik}</p>
+                      {duzenlenenAnlatimId === a.id ? (
+                        <div className="mt-3 flex flex-col gap-3">
+                          <textarea className={kutu} rows={4} maxLength={5000} value={anlatimTaslak} onChange={(e) => setAnlatimTaslak(e.target.value)} aria-label="Anlatım içeriği" />
+                          <div className="flex flex-wrap gap-3">
+                            <button onClick={() => void anlatimGuncelle(a.id)} className="min-h-10 rounded-lg bg-cyan-300 px-4 py-2 font-semibold text-slate-950">Değişiklikleri kaydet</button>
+                            <button onClick={() => setDuzenlenenAnlatimId("")} className="min-h-10 rounded-lg border border-white/10 px-4 py-2 text-slate-300">Vazgeç</button>
+                          </div>
+                        </div>
+                      ) : <p className="whitespace-pre-wrap break-words">{a.icerik}</p>}
                       <div className="mt-2 flex items-center gap-3">
                         {benimki ? (
                           <>
                             <span className="text-gray-400">
                               👍 {oySayisi(a.id)} · senin anlatımın
                             </span>
+                            <button onClick={() => { setDuzenlenenAnlatimId(a.id); setAnlatimTaslak(a.icerik); }} className="min-h-10 text-cyan-200 underline">Düzenle</button>
                             <button
                               onClick={() => anlatimSil(a.id)}
                               className="text-red-400 underline"

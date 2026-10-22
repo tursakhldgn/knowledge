@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import InstallAppButton from "@/components/InstallAppButton";
 
 export default function Menu() {
   const pathname = usePathname();
@@ -14,7 +15,10 @@ export default function Menu() {
     let etkin = true;
     supabase.auth.getUser().then(({ data }) => { if (etkin) setKullaniciId(data.user?.id ?? ""); });
     const { data: dinleyici } = supabase.auth.onAuthStateChange(
-      (_olay, oturum) => setKullaniciId(oturum?.user?.id ?? "")
+      (_olay, oturum) => {
+        setKullaniciId(oturum?.user?.id ?? "");
+        if (!oturum?.user) setOkunmamis(0);
+      }
     );
     return () => {
       etkin = false;
@@ -24,7 +28,6 @@ export default function Menu() {
 
   useEffect(() => {
     if (!kullaniciId) {
-      setOkunmamis(0);
       return;
     }
     let etkin = true;
@@ -55,6 +58,7 @@ export default function Menu() {
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-slate-950/90 px-4 py-3 text-slate-100 backdrop-blur-xl sm:px-6">
         <Link href="/" className="font-bold tracking-tight">Knowledge</Link>
         <div className="flex items-center gap-3">
+          <InstallAppButton />
           {girisVar && (
             <Link href="/bildirimler" aria-label={`Bildirimler${okunmamis ? `, ${okunmamis} okunmamış` : ""}`} className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-white/10 ${pathname === "/bildirimler" ? "text-cyan-200" : "text-slate-300"}`}>
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>

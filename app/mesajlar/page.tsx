@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -16,6 +16,7 @@ type Mesaj = {
   alici_id: string;
   icerik: string;
   olusturma_tarihi: string;
+  okundu_at: string | null;
 };
 
 export default function Mesajlar() {
@@ -32,8 +33,20 @@ export default function Mesajlar() {
   const [hata, setHata] = useState("");
   const mesajSonu = useRef<HTMLDivElement>(null);
   const aktifSohbetRef = useRef("");
+  const urlSohbetiAcildi = useRef(false);
 
   const secilenKisi = kisiler.find((kisi) => kisi.kullanici_id === secilenId);
+
+  const okunmayanlariIsaretle = useCallback(async (gonderenId: string, aliciId: string) => {
+    if (!gonderenId || !aliciId || gonderenId === aliciId) return;
+    const { error } = await supabase
+      .from("mesajlar")
+      .update({ okundu_at: new Date().toISOString() })
+      .eq("gonderen_id", gonderenId)
+      .eq("alici_id", aliciId)
+      .is("okundu_at", null);
+    if (error) setHata("Mesajların okundu bilgisi güncellenemedi.");
+  }, []);
 
   const sonSohbetler = useMemo(() => {
     const sonlar = new Map<string, Mesaj>();
@@ -72,7 +85,7 @@ export default function Mesajlar() {
           .limit(1000),
         supabase
           .from("mesajlar")
-          .select("id, gonderen_id, alici_id, icerik, olusturma_tarihi")
+          .select("id, gonderen_id, alici_id, icerik, olusturma_tarihi, okundu_at")
           .or(`gonderen_id.eq.${uid},alici_id.eq.${uid}`)
           .order("olusturma_tarihi", { ascending: false })
           .limit(500),
@@ -93,7 +106,7 @@ export default function Mesajlar() {
     async function sohbetMesajlariniGetir(uid: string, digerId: string) {
       const { data, error: mesajHatasi } = await supabase
         .from("mesajlar")
-        .select("id, gonderen_id, alici_id, icerik, olusturma_tarihi")
+        .select("id, gonderen_id, alici_id, icerik, olusturma_tarihi, okundu_at")
         .or(`and(gonderen_id.eq.${uid},alici_id.eq.${digerId}),and(gonderen_id.eq.${digerId},alici_id.eq.${uid})`)
         .order("olusturma_tarihi", { ascending: true })
         .limit(200);
@@ -103,6 +116,7 @@ export default function Mesajlar() {
         return;
       }
       setAktifMesajlar(data ?? []);
+      void okunmayanlariIsaretle(digerId, uid);
     }
 
     async function basla() {
@@ -134,13 +148,13 @@ export default function Mesajlar() {
       if (yenileme) clearTimeout(yenileme);
       if (kanal) void supabase.removeChannel(kanal);
     };
-  }, [router]);
+  }, [router, okunmayanlariIsaretle]);
 
   useEffect(() => {
     mesajSonu.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [aktifMesajlar]);
 
-  async function sohbetAc(kisi: Kisi) {
+  const sohbetAc = useCallback(async (kisi: Kisi) => {
     setSecilenId(kisi.kullanici_id);
     aktifSohbetRef.current = kisi.kullanici_id;
     setArama("");
@@ -148,14 +162,31 @@ export default function Mesajlar() {
     setAktifMesajlar([]);
     const { data, error: mesajHatasi } = await supabase
       .from("mesajlar")
-      .select("id, gonderen_id, alici_id, icerik, olusturma_tarihi")
+      .select("id, gonderen_id, alici_id, icerik, olusturma_tarihi, okundu_at")
       .or(`and(gonderen_id.eq.${benimId},alici_id.eq.${kisi.kullanici_id}),and(gonderen_id.eq.${kisi.kullanici_id},alici_id.eq.${benimId})`)
       .order("olusturma_tarihi", { ascending: true })
       .limit(200);
     if (aktifSohbetRef.current !== kisi.kullanici_id) return;
     if (mesajHatasi) setHata("Sohbet açılamadı. Mesajlar tablosu ayarını kontrol et.");
-    else setAktifMesajlar(data ?? []);
-  }
+    else {
+      setAktifMesajlar(data ?? []);
+      void okunmayanlariIsaretle(kisi.kullanici_id, benimId);
+    }
+  }, [benimId, okunmayanlariIsaretle]);
+
+  useEffect(() => {
+    if (!benimId || !kisiler.length || urlSohbetiAcildi.current) return;
+    const hedefId = new URLSearchParams(window.location.search).get("kullanici");
+    if (!hedefId) {
+      urlSohbetiAcildi.current = true;
+      return;
+    }
+    const kisi = kisiler.find((item) => item.kullanici_id === hedefId);
+    if (!kisi) return;
+    urlSohbetiAcildi.current = true;
+    const zamanlayici = window.setTimeout(() => void sohbetAc(kisi), 0);
+    return () => window.clearTimeout(zamanlayici);
+  }, [benimId, kisiler, sohbetAc]);
 
   async function mesajGonder(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -177,7 +208,7 @@ export default function Mesajlar() {
     // Realtime is enabled through the migration; refresh immediately for the sender too.
     const { data } = await supabase
       .from("mesajlar")
-      .select("id, gonderen_id, alici_id, icerik, olusturma_tarihi")
+      .select("id, gonderen_id, alici_id, icerik, olusturma_tarihi, okundu_at")
       .or(`and(gonderen_id.eq.${benimId},alici_id.eq.${secilenKisi.kullanici_id}),and(gonderen_id.eq.${secilenKisi.kullanici_id},alici_id.eq.${benimId})`)
       .order("olusturma_tarihi", { ascending: true })
       .limit(200);
@@ -189,6 +220,7 @@ export default function Mesajlar() {
         alici_id: secilenKisi.kullanici_id,
         icerik,
         olusturma_tarihi: new Date().toISOString(),
+        okundu_at: null,
       },
       ...eski,
     ]);
@@ -235,7 +267,10 @@ export default function Mesajlar() {
                   <span className="block truncate text-sm font-semibold">@{kisi.takma_ad}</span>
                   <span className="mt-1 block truncate text-xs text-slate-500">{mesaj.icerik}</span>
                 </span>
-                <span className="text-[10px] text-slate-500">{zamanYaz(mesaj.olusturma_tarihi)}</span>
+                <span className="flex shrink-0 flex-col items-end gap-1">
+                  <span className="text-[10px] text-slate-500">{zamanYaz(mesaj.olusturma_tarihi)}</span>
+                  {tumMesajlar.some((item) => item.gonderen_id === kisi.kullanici_id && item.alici_id === benimId && !item.okundu_at) && <span className="h-2 w-2 rounded-full bg-cyan-300" aria-label="Okunmamış mesaj" />}
+                </span>
               </button>
             )) : (
               <p className="px-3 py-5 text-sm leading-6 text-slate-500">Henüz sohbetin yok. Kullanıcı adını arayıp yeni sohbet başlat.</p>
@@ -260,7 +295,10 @@ export default function Mesajlar() {
                     <div key={mesaj.id} className={`flex ${benimMesajim ? "justify-end" : "justify-start"}`}>
                       <article className={`max-w-[85%] rounded-2xl px-4 py-3 sm:max-w-[72%] ${benimMesajim ? "rounded-br-md bg-cyan-300 text-slate-950" : "rounded-bl-md border border-white/10 bg-slate-950/70 text-slate-100"}`}>
                         <p className="whitespace-pre-wrap break-words text-sm leading-6">{mesaj.icerik}</p>
-                        <p className={`mt-1 text-right text-[10px] ${benimMesajim ? "text-slate-700" : "text-slate-500"}`}>{zamanYaz(mesaj.olusturma_tarihi)}</p>
+                        <p className={`mt-1 flex items-center justify-end gap-2 text-[10px] ${benimMesajim ? "text-slate-700" : "text-slate-500"}`}>
+                          {zamanYaz(mesaj.olusturma_tarihi)}
+                          {benimMesajim && <span>{mesaj.okundu_at ? "· Görüldü" : "· Gönderildi"}</span>}
+                        </p>
                       </article>
                     </div>
                   );
