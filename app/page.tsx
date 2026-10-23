@@ -15,7 +15,7 @@ const steps = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_50%_0%,_rgba(8,145,178,0.14),_transparent_42%),#070b14] px-4 pb-28 pt-8 text-slate-100 sm:px-6 sm:pt-12">
+    <main data-app-theme="light" className="min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_50%_0%,_rgba(8,145,178,0.14),_transparent_42%),#070b14] px-4 pb-28 pt-8 text-slate-100 sm:px-6 sm:pt-12">
       <div className="mx-auto w-full max-w-7xl">
         <section className="relative isolate overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-[#0b1424] to-cyan-950/60 shadow-2xl shadow-black/30">
           <div className="pointer-events-none absolute -right-24 -top-32 -z-10 h-96 w-96 rounded-full bg-cyan-300/10 blur-3xl" />

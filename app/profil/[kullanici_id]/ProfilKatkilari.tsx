@@ -73,53 +73,48 @@ export default function ProfilKatkilari({ kullaniciId }: { kullaniciId: string }
   const tarihYaz = (tarih: string) => new Intl.DateTimeFormat("tr-TR", { dateStyle: "medium" }).format(new Date(tarih));
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-6xl px-4 pt-6 pb-28 text-slate-100 sm:px-6 sm:pt-10 xl:px-8">
+    <main data-app-theme="light" className="mx-auto min-h-dvh w-full max-w-6xl px-4 pt-6 pb-28 text-slate-100 sm:px-6 sm:pt-10 xl:px-8">
       {yukleniyor ? <p className="py-16 text-center text-slate-400">Profil yükleniyor…</p> : hata ? <p role="alert" className="rounded-2xl border border-rose-300/20 bg-rose-300/10 p-5 text-rose-200">{hata}</p> : profil && (
         <>
-          <header className="flex flex-col gap-6 rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/50 p-5 sm:flex-row sm:items-center sm:p-8">
-            <span className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border border-cyan-200/20 bg-slate-800 text-3xl font-semibold text-cyan-100 sm:h-28 sm:w-28">
+          <header className="flex flex-col gap-5 border-b border-slate-200 pb-7 sm:flex-row sm:items-center sm:gap-8 sm:pb-8">
+            <span className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100 text-3xl font-semibold text-cyan-800 sm:h-36 sm:w-36">
               {profil.avatar_url ? <img src={profil.avatar_url} alt="" className="h-full w-full object-cover" /> : profil.takma_ad?.[0]?.toLocaleUpperCase("tr-TR") ?? "?"}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Knowledge topluluğu</p>
-              <h1 className="mt-2 break-words text-3xl font-bold tracking-tight">@{profil.takma_ad ?? "isimsiz"}</h1>
-              <p className="mt-2 text-sm text-slate-400">Topluluğa yaptığı paylaşımlar</p>
+              <h1 className="break-words text-3xl font-bold tracking-tight text-slate-900">@{profil.takma_ad ?? "isimsiz"}</h1>
+              <div className="mt-5 flex flex-wrap gap-x-8 gap-y-2 text-sm text-slate-700" aria-label="Katkı istatistikleri">
+                <span><strong className="font-bold text-slate-900">{soruToplami}</strong> soru</span>
+                <span><strong className="font-bold text-slate-900">{anlatimToplami}</strong> anlatım</span>
+                <span><strong className="font-bold text-slate-900">{oySayisi}</strong> faydalı oy</span>
+              </div>
+              <p className="mt-3 text-sm text-slate-500">Topluluğa yaptığı paylaşımlar</p>
             </div>
-            {benimId !== profil.kullanici_id && <Link href={`/mesajlar?kullanici=${profil.kullanici_id}`} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-cyan-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200">Mesaj gönder</Link>}
+            {benimId !== profil.kullanici_id && <Link href={`/mesajlar?kullanici=${profil.kullanici_id}`} className="inline-flex min-h-11 items-center justify-center self-start rounded-full bg-cyan-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-800 sm:ml-auto">Mesaj gönder</Link>}
           </header>
 
-          <section aria-label="Katkı istatistikleri" className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-            {[{ etiket: "Soru", sayi: soruToplami }, { etiket: "Anlatım", sayi: anlatimToplami }, { etiket: "Faydalı oy", sayi: oySayisi }].map((istatistik) => (
-              <article key={istatistik.etiket} className="rounded-2xl border border-white/10 bg-slate-900/70 p-5">
-                <p className="text-sm text-slate-400">{istatistik.etiket}</p>
-                <p className="mt-2 text-3xl font-bold text-white">{istatistik.sayi}</p>
-              </article>
-            ))}
-          </section>
-
-          <div className="mt-7 grid gap-6 xl:grid-cols-2">
+          <div className="mt-5 grid gap-8 xl:grid-cols-2">
             <section className="min-w-0">
-              <h2 className="mb-3 text-xl font-semibold">Soruları</h2>
-              <div className="space-y-3">
+              <h2 className="mb-2 border-b border-slate-200 pb-3 text-xl font-semibold text-slate-900">Soruları</h2>
+              <div className="divide-y divide-slate-200">
                 {sorular.length ? sorular.map((soru) => (
-                  <Link key={soru.id} href={`/sorular?soru=${soru.id}#soru-${soru.id}`} className="block rounded-2xl border border-white/10 bg-slate-900/70 p-5 transition hover:border-cyan-300/30 hover:bg-slate-900">
+                  <Link key={soru.id} href={`/sorular?soru=${soru.id}#soru-${soru.id}`} className="block py-5 transition hover:bg-cyan-50/70">
                     <p className="text-xs text-cyan-200">{soru.ders} · {soru.konu} · {tarihYaz(soru.olusturma_tarihi)}</p>
                     <h3 className="mt-2 break-words font-semibold">{soru.baslik}</h3>
                     {soru.aciklama && <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-slate-400">{soru.aciklama}</p>}
                   </Link>
-                )) : <p className="rounded-2xl border border-dashed border-white/10 p-6 text-sm text-slate-500">Henüz soru paylaşmamış.</p>}
+                )) : <p className="py-6 text-sm text-slate-500">Henüz soru paylaşmamış.</p>}
               </div>
             </section>
 
             <section className="min-w-0">
-              <h2 className="mb-3 text-xl font-semibold">Anlatımları</h2>
-              <div className="space-y-3">
+              <h2 className="mb-2 border-b border-slate-200 pb-3 text-xl font-semibold text-slate-900">Anlatımları</h2>
+              <div className="divide-y divide-slate-200">
                 {anlatimlar.length ? anlatimlar.map((anlatim) => (
-                  <Link key={anlatim.id} href={`/sorular?anlatim=${anlatim.id}#anlatim-${anlatim.id}`} className="block rounded-2xl border border-white/10 bg-slate-900/70 p-5 transition hover:border-cyan-300/30 hover:bg-slate-900">
+                  <Link key={anlatim.id} href={`/sorular?anlatim=${anlatim.id}#anlatim-${anlatim.id}`} className="block py-5 transition hover:bg-cyan-50/70">
                     <p className="text-xs text-slate-500">{tarihYaz(anlatim.olusturma_tarihi)}</p>
                     <p className="mt-2 line-clamp-5 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">{anlatim.icerik}</p>
                   </Link>
-                )) : <p className="rounded-2xl border border-dashed border-white/10 p-6 text-sm text-slate-500">Henüz anlatım paylaşmamış.</p>}
+                )) : <p className="py-6 text-sm text-slate-500">Henüz anlatım paylaşmamış.</p>}
               </div>
             </section>
           </div>

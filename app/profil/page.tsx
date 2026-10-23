@@ -206,11 +206,11 @@ export default function Profil() {
   }
 
   const kutu =
-    "w-full rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20";
+    "w-full border-0 border-b border-slate-300 bg-transparent px-1 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-500 focus:border-cyan-700 focus:ring-0";
   const gosterilen = onizleme || avatarUrl;
 
   return (
-    <main className="mx-auto mt-5 mb-24 grid w-[calc(100%-1.5rem)] max-w-5xl grid-cols-1 gap-5 rounded-3xl border border-white/10 bg-slate-900/85 p-4 text-slate-100 shadow-2xl shadow-black/25 sm:mt-8 sm:w-[calc(100%-3rem)] sm:gap-6 sm:p-7 xl:mt-10 xl:grid-cols-2 xl:gap-x-10 xl:gap-y-6 xl:p-10">
+    <main data-app-theme="light" className="mx-auto mt-5 mb-24 grid w-[calc(100%-1.5rem)] max-w-4xl grid-cols-1 gap-5 px-1 py-4 text-slate-800 sm:mt-8 sm:w-[calc(100%-3rem)] sm:gap-6 sm:py-7 xl:mt-10 xl:grid-cols-2 xl:gap-x-12 xl:gap-y-6 xl:px-4 xl:py-10">
       <div className="flex min-w-0 items-start justify-between gap-3 xl:col-span-2">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Topluluğun bir parçasısın</p>
@@ -226,15 +226,15 @@ export default function Profil() {
       </p>
       {userId && <Link href={`/profil/${userId}`} className="w-fit text-sm font-medium text-cyan-200 underline underline-offset-4 hover:text-cyan-100 xl:col-span-2">Profilini görüntüle ve katkılarını gör</Link>}
 
-      <div className="flex min-w-0 items-center gap-4 rounded-2xl border border-white/5 bg-slate-950/40 p-4 xl:col-span-2">
-        <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-cyan-300/20 bg-slate-800 ring-4 ring-cyan-300/5">
+      <div className="flex min-w-0 items-center gap-5 border-y border-slate-200 py-5 xl:col-span-2">
+        <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-slate-200 bg-slate-100">
           {gosterilen ? (
             <img src={gosterilen} alt="Profil" className="h-full w-full object-cover" />
           ) : (
             <span className="text-3xl">👤</span>
           )}
         </div>
-        <label className="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10">
+        <label className="cursor-pointer rounded-full bg-cyan-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-800">
           Fotoğraf seç
           <input type="file" accept="image/*" onChange={dosyaSec} className="hidden" />
         </label>
@@ -273,7 +273,7 @@ export default function Profil() {
         </>
       )}
 
-      <button onClick={kaydet} disabled={kaydediliyor || fotografIsleniyor} className="rounded-xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50 xl:col-span-2">
+      <button onClick={kaydet} disabled={kaydediliyor || fotografIsleniyor} className="rounded-full bg-cyan-700 px-4 py-3 font-semibold text-white transition hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-50 xl:col-span-2">
         {fotografIsleniyor ? "Fotoğraf hazırlanıyor..." : kaydediliyor ? "Kaydediliyor..." : "Kaydet"}
       </button>
       <button onClick={simdilikGec} className="justify-self-center py-2 text-sm text-slate-400 underline underline-offset-4 hover:text-slate-200 xl:col-span-2">

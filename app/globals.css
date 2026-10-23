@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #070b14;
-  --foreground: #f1f5f9;
+  --background: #f5f8f7;
+  --foreground: #19364a;
 }
 
 @theme inline {
@@ -16,4 +16,137 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* The login page keeps its original dark look. The rest of Knowledge uses a
+   brighter palette: warm light surfaces, calm blue text, teal actions. */
+[data-app-theme="light"] {
+  color: #19364a !important;
+  background-color: #f5f8f7 !important;
+  background-image:
+    radial-gradient(ellipse at 7% 0%, rgba(20, 158, 157, 0.09), transparent 34%),
+    radial-gradient(ellipse at 96% 18%, rgba(249, 190, 93, 0.08), transparent 26%),
+    linear-gradient(135deg, #f8faf7 0%, #f0f7f7 55%, #f5f7fb 100%) !important;
+}
+
+[data-app-theme="light"] [class*="bg-slate-950"] {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+[data-app-theme="light"] [class*="bg-slate-900"] {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+[data-app-theme="light"] [class*="bg-slate-800"] {
+  background-color: #edf4f5 !important;
+  background-image: none !important;
+}
+
+[data-app-theme="light"] [class*="bg-black"] {
+  background-color: #eef4f4 !important;
+  background-image: none !important;
+}
+
+[data-app-theme="light"] [class*="bg-white/5"],
+[data-app-theme="light"] [class*="bg-white/10"] {
+  background-color: #f1f7f6 !important;
+}
+
+[data-app-theme="light"] [class*="border-white/5"],
+[data-app-theme="light"] [class*="border-white/10"],
+[data-app-theme="light"] [class*="border-white/15"] {
+  border-color: #dce8e8 !important;
+}
+
+[data-app-theme="light"] [class*="border-slate-700"] {
+  border-color: #cbdcde !important;
+}
+
+[data-app-theme="light"] [class~="text-slate-100"],
+[data-app-theme="light"] [class~="text-white"] {
+  color: #19364a !important;
+}
+
+[data-app-theme="light"] [class~="text-slate-200"] {
+  color: #28485b !important;
+}
+
+[data-app-theme="light"] [class~="text-slate-300"] {
+  color: #3d5a6c !important;
+}
+
+[data-app-theme="light"] [class~="text-slate-400"] {
+  color: #607889 !important;
+}
+
+[data-app-theme="light"] [class~="text-slate-500"] {
+  color: #718895 !important;
+}
+
+[data-app-theme="light"] [class~="text-cyan-100"],
+[data-app-theme="light"] [class~="text-cyan-200"],
+[data-app-theme="light"] [class~="text-cyan-300"] {
+  color: #087f80 !important;
+}
+
+[data-app-theme="light"] [class~="text-amber-100"],
+[data-app-theme="light"] [class~="text-amber-200"] {
+  color: #93620f !important;
+}
+
+[data-app-theme="light"] [class~="text-rose-200"] {
+  color: #a34250 !important;
+}
+
+[data-app-theme="light"] [class~="text-blue-400"] {
+  color: #126d9b !important;
+}
+
+[data-app-theme="light"] header[class*="bg-gradient-to-br"] {
+  border-color: #d9e8e6 !important;
+  background: linear-gradient(125deg, #e4f5f1 0%, #edf4fa 58%, #fff6e7 100%) !important;
+}
+
+[data-app-theme="light"] section.bg-gradient-to-br[class*="from-slate-900"] {
+  border-color: #d5e8e6 !important;
+  background: linear-gradient(125deg, #e4f5f1 0%, #edf4fa 58%, #fff6e7 100%) !important;
+}
+
+[data-app-theme="light"] a[class~="bg-cyan-300"],
+[data-app-theme="light"] button[class~="bg-cyan-300"] {
+  background-color: #0f766e !important;
+  color: #ffffff !important;
+}
+
+[data-app-theme="light"] a[class~="bg-cyan-300"]:hover,
+[data-app-theme="light"] button[class~="bg-cyan-300"]:hover {
+  background-color: #0c625d !important;
+}
+
+[data-app-theme="light"] a[class*="bg-green-700"],
+[data-app-theme="light"] button[class*="bg-green-700"],
+[data-app-theme="light"] a[class*="bg-gray-600"],
+[data-app-theme="light"] button[class*="bg-gray-600"] {
+  color: #ffffff !important;
+}
+
+[data-app-theme="light"] [class*="placeholder:text-slate-500"]::placeholder {
+  color: #82939e !important;
+}
+
+[data-app-theme="light"] [class*="hover:bg-white/5"]:hover,
+[data-app-theme="light"] [class*="hover:bg-white/10"]:hover {
+  background-color: #edf5f4 !important;
+}
+
+[data-app-theme="light"] [class*="hover:text-white"]:hover {
+  color: #0f766e !important;
+}
+
+@media (min-width: 1024px) {
+  [data-app-theme="light"] {
+    padding-bottom: 2rem !important;
+  }
 }

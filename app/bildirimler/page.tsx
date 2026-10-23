@@ -105,7 +105,7 @@ export default function Bildirimler() {
   const okunmamisSayisi = bildirimler.filter((item) => !item.okundu_at).length;
 
   return (
-    <main className="mx-auto min-h-[calc(100dvh-64px)] w-full max-w-5xl px-4 pt-6 pb-28 text-slate-100 sm:px-6 sm:pt-10 xl:px-8">
+    <main data-app-theme="light" className="mx-auto min-h-[calc(100dvh-64px)] w-full max-w-5xl px-4 pt-6 pb-28 text-slate-100 sm:px-6 sm:pt-10 xl:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Haber akışı</p>
