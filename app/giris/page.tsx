@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 
 const SIMDIKI_YIL = new Date().getFullYear();
@@ -119,7 +120,7 @@ export default function Giris() {
         <section className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-cyan-950 via-slate-900 to-slate-950 p-10 md:flex lg:p-12">
           <div className="pointer-events-none absolute -bottom-16 -left-12 h-72 w-72 rounded-full bg-cyan-300/10 blur-3xl" />
           <div className="relative">
-            <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-300 text-lg font-black text-slate-950">A</span>
+            <Image src="/knowledge-mark.png" alt="Knowledge kuş ve kitap logosu" width={720} height={508} className="h-12 w-16 object-contain" priority />
             <p className="mt-8 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200">Knowledge</p>
             <h1 className="mt-4 text-4xl font-bold leading-tight">Öğrenmenin en iyi yolu, birlikte düşünmek.</h1>
             <p className="mt-5 leading-7 text-slate-300">Sorunu sor, anlaşılır yanıtlar al ve bildiklerini paylaşarak başkasına yol göster.</p>
@@ -133,7 +134,7 @@ export default function Giris() {
 
         <section className="p-6 sm:p-9 lg:p-12">
           <div className="mb-8 md:hidden">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-300 font-black text-slate-950">A</span>
+            <Image src="/knowledge-mark.png" alt="Knowledge kuş ve kitap logosu" width={720} height={508} className="h-10 w-14 object-contain" priority />
             <p className="mt-3 text-sm font-semibold text-cyan-200">Knowledge</p>
           </div>
           <p className="text-sm font-medium text-cyan-300">Öğrenci topluluğuna hoş geldin</p>

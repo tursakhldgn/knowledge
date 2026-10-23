@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -56,7 +57,24 @@ export default function Menu() {
   return (
     <>
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-slate-950/90 px-4 py-3 text-slate-100 backdrop-blur-xl sm:px-6">
-        <Link href="/" className="font-bold tracking-tight">Knowledge</Link>
+        <Link href="/" className="flex items-center gap-2 font-bold tracking-tight" aria-label="Knowledge ana sayfa">
+          {pathname === "/giris" ? (
+            "Knowledge"
+          ) : (
+            <>
+              <Image
+                src="/knowledge-mark.png"
+                alt=""
+                aria-hidden="true"
+                width={720}
+                height={508}
+                className="h-8 w-11 object-contain sm:h-9 sm:w-12"
+                priority
+              />
+              <span>Knowledge</span>
+            </>
+          )}
+        </Link>
         <div className="flex items-center gap-3">
           <InstallAppButton />
           {girisVar && (
