@@ -44,7 +44,7 @@ function cryptoApi() {
   return globalThis.crypto;
 }
 
-async function parolaAnahtari(parola: string, salt: Uint8Array) {
+async function parolaAnahtari(parola: string, salt: Uint8Array<ArrayBuffer>) {
   const api = cryptoApi();
   const malzeme = await api.subtle.importKey("raw", textEncoder.encode(parola), "PBKDF2", false, ["deriveKey"]);
   return api.subtle.deriveKey(
@@ -120,7 +120,7 @@ export async function cihazKimliginiOku(userId: string): Promise<DmIdentity | nu
   return identity;
 }
 
-async function mesajAnahtari(privateKey: CryptoKey, peerPublicKey: string, salt: Uint8Array, baglam: string) {
+async function mesajAnahtari(privateKey: CryptoKey, peerPublicKey: string, salt: Uint8Array<ArrayBuffer>, baglam: string) {
   const api = cryptoApi();
   const peerKey = await api.subtle.importKey("raw", fromBase64(peerPublicKey), { name: "ECDH", namedCurve: "P-256" }, false, []);
   const secret = await api.subtle.deriveBits({ name: "ECDH", public: peerKey }, privateKey, 256);
