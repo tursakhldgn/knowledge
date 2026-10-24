@@ -32,6 +32,17 @@ export default function Giris() {
       return;
     }
 
+    // Fast UI check; the database trigger remains the authoritative, race-safe limit.
+    const { data: kayitAcik, error: kapasiteHata } = await supabase.rpc("erken_erisim_acik_mi");
+    if (kapasiteHata) {
+      setMesaj("Erken erişim durumu kontrol edilemedi. Biraz sonra tekrar dene.");
+      return;
+    }
+    if (!kayitAcik) {
+      setMesaj("100 kişilik erken erişim kontenjanı doldu. İlgin için teşekkürler!");
+      return;
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password: sifre,
@@ -40,7 +51,11 @@ export default function Giris() {
       },
     });
     if (error) {
-      setMesaj(error.message);
+      // A concurrent signup may take the final slot between the check and signUp.
+      const { data: halaAcik } = await supabase.rpc("erken_erisim_acik_mi");
+      setMesaj(halaAcik === false
+        ? "100 kişilik erken erişim kontenjanı doldu. İlgin için teşekkürler!"
+        : error.message);
       return;
     }
     if (data.session && data.user) {
@@ -140,6 +155,7 @@ export default function Giris() {
           <p className="text-sm font-medium text-cyan-300">Öğrenci topluluğuna hoş geldin</p>
           <h2 className="mt-2 text-3xl font-bold tracking-tight">{kayitModu ? "Hesabını oluştur" : "Kaldığın yerden devam et"}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">{kayitModu ? "Ücretsiz katıl, sorularını paylaşmaya başla." : "Sorularına ve topluluğa dönmek için giriş yap."}</p>
+          {kayitModu && <p className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-300/5 px-3 py-2 text-xs leading-5 text-cyan-100/80">Erken erişim 100 kişiyle sınırlı. Kontenjan dolunca yeni kayıtlar kapanır.</p>}
 
           <div className="mt-7 grid grid-cols-2 rounded-xl border border-white/10 bg-slate-950/60 p-1" role="tablist" aria-label="Giriş veya kayıt seç">
             <button type="button" role="tab" aria-selected={!kayitModu} onClick={() => { setAktifSekme("giris"); setMesaj(""); }} className={!kayitModu ? "rounded-lg bg-slate-800 px-3 py-2.5 text-sm font-semibold text-white shadow" : "rounded-lg px-3 py-2.5 text-sm text-slate-400 transition hover:text-white"}>Giriş yap</button>
