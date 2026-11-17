@@ -128,17 +128,15 @@ export default function Mesajlar() {
 
   useEffect(() => {
     if (!benimId) return;
-    const kanal = supabase
-      .channel("knowledge:dm:presence", { config: { private: true } })
-      .on("presence", { event: "sync" }, () => {
-        const durum = kanal.presenceState() as Record<string, { kullanici_id?: string }[]>;
-        const cevrimiciler = new Set(
-          Object.values(durum).flatMap((oturumlar) => oturumlar.map((oturum) => oturum.kullanici_id).filter((id): id is string => !!id))
-        );
-        setCevrimiciKullanicilar(cevrimiciler);
-      })
-      .subscribe();
-    return () => { void supabase.removeChannel(kanal); };
+    const durumGuncelle = (event: Event) => {
+      const durum = (event as CustomEvent<Record<string, { kullanici_id?: string }[]>>).detail ?? {};
+      const cevrimiciler = new Set(
+        Object.values(durum).flatMap((oturumlar) => oturumlar.map((oturum) => oturum.kullanici_id).filter((id): id is string => !!id))
+      );
+      setCevrimiciKullanicilar(cevrimiciler);
+    };
+    window.addEventListener("knowledge:dm-presence-sync", durumGuncelle);
+    return () => window.removeEventListener("knowledge:dm-presence-sync", durumGuncelle);
   }, [benimId]);
 
   useEffect(() => {
@@ -458,7 +456,7 @@ export default function Mesajlar() {
       await sohbetleriGetir(kullaniciId);
 
       kanal = supabase
-        .channel("kullanici-dm-mesajlari")
+        .channel(`kullanici-dm-mesajlari-${kullaniciId}-${crypto.randomUUID()}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "mesajlar" }, () => {
           if (yenileme) clearTimeout(yenileme);
           yenileme = setTimeout(() => {

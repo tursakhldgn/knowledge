@@ -60,10 +60,17 @@ export default function Menu() {
     let etkin = true;
     const varlikKanali = supabase.channel("knowledge:dm:presence", {
       config: { private: true, presence: { key: kullaniciId } },
+    }).on("presence", { event: "sync" }, () => {
+      window.dispatchEvent(new CustomEvent("knowledge:dm-presence-sync", {
+        detail: varlikKanali.presenceState(),
+      }));
     });
-    varlikKanali.subscribe((durum) => {
+    varlikKanali.subscribe(async (durum) => {
       if (durum === "SUBSCRIBED") {
-        void varlikKanali.track({ kullanici_id: kullaniciId, son_gorulme: new Date().toISOString() });
+        await varlikKanali.track({ kullanici_id: kullaniciId, son_gorulme: new Date().toISOString() });
+        window.dispatchEvent(new CustomEvent("knowledge:dm-presence-sync", {
+          detail: varlikKanali.presenceState(),
+        }));
       }
     });
 
