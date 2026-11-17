@@ -13,6 +13,12 @@ const steps = [
   { number: "03", title: "Katkı sun", detail: "Bildiğini paylaş, faydalı anlatımları öne çıkar." },
 ];
 
+const highlights = [
+  { title: "Gerçek anlayış", detail: "Kısa özet değil, adım adım açıklamalarla öğren." },
+  { title: "Öğrenme döngüsü", detail: "Soru sorar, yanıt görür, sonra başkasına öğretirsin." },
+  { title: "Motivasyon", detail: "Topluluk sıralaması ve katkı odaklı akış seni ilerletir." },
+];
+
 export default function Home() {
   return (
     <main data-app-theme="light" className="min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_50%_0%,_rgba(8,145,178,0.14),_transparent_42%),#070b14] px-4 pb-28 pt-8 text-slate-100 sm:px-6 sm:pt-12">
@@ -100,6 +106,18 @@ export default function Home() {
               </Link>
             ))}
           </div>
+        </section>
+
+        <section className="mt-16 grid gap-4 md:grid-cols-3">
+          {highlights.map((item, index) => (
+            <article key={item.title} className="rounded-2xl border border-white/10 bg-slate-900/50 p-5 shadow-lg shadow-black/10">
+              <div className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-cyan-300/10 text-sm font-bold text-cyan-200">
+                {index + 1}
+              </div>
+              <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-400">{item.detail}</p>
+            </article>
+          ))}
         </section>
 
         <section className="mt-16 rounded-3xl border border-white/10 bg-slate-900/45 p-6 sm:mt-20 sm:p-10">

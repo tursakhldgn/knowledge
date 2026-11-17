@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import InstallAppButton from "@/components/InstallAppButton";
@@ -12,6 +12,8 @@ export default function Menu() {
   const [kullaniciId, setKullaniciId] = useState("");
   const [okunmamis, setOkunmamis] = useState(0);
   const [soruMenusuAcik, setSoruMenusuAcik] = useState(false);
+  const [titretmeUyarisi, setTitretmeUyarisi] = useState(false);
+  const titretmeUyarisiZamanlayici = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let etkin = true;
@@ -50,6 +52,60 @@ export default function Menu() {
     return () => {
       etkin = false;
       void supabase.removeChannel(kanal);
+    };
+  }, [kullaniciId]);
+
+  useEffect(() => {
+    if (!kullaniciId) return;
+    let etkin = true;
+    const varlikKanali = supabase.channel("knowledge:dm:presence", {
+      config: { private: true, presence: { key: kullaniciId } },
+    });
+    varlikKanali.subscribe((durum) => {
+      if (durum === "SUBSCRIBED") {
+        void varlikKanali.track({ kullanici_id: kullaniciId, son_gorulme: new Date().toISOString() });
+      }
+    });
+
+    const titretmeKanali = supabase
+      .channel(`dm-titretme-db-${kullaniciId}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "dm_titretmeler",
+        filter: `alici_id=eq.${kullaniciId}`,
+      }, () => {
+        if (!etkin) return;
+        let cihazTitredi = false;
+        try {
+          cihazTitredi = typeof navigator !== "undefined"
+            && typeof navigator.vibrate === "function"
+            && navigator.vibrate([300, 100, 300, 100, 500]);
+        } catch {
+          cihazTitredi = false;
+        }
+
+        if (!cihazTitredi) {
+          setTitretmeUyarisi(true);
+          if (titretmeUyarisiZamanlayici.current) clearTimeout(titretmeUyarisiZamanlayici.current);
+          titretmeUyarisiZamanlayici.current = setTimeout(() => setTitretmeUyarisi(false), 8000);
+          try {
+            if ("Notification" in window && Notification.permission === "granted") {
+              new Notification("Titretildin", { body: "Bir Knowledge üyesi sana titreşim gönderdi." });
+            }
+          } catch {
+            // The in-app alert remains available when system notifications are blocked.
+          }
+        }
+      })
+      .subscribe();
+
+    return () => {
+      etkin = false;
+      void varlikKanali.untrack();
+      void supabase.removeChannel(varlikKanali);
+      void supabase.removeChannel(titretmeKanali);
+      if (titretmeUyarisiZamanlayici.current) clearTimeout(titretmeUyarisiZamanlayici.current);
     };
   }, [kullaniciId]);
 
@@ -117,6 +173,12 @@ export default function Menu() {
           )}
         </div>
       </header>
+
+      {girisVar && titretmeUyarisi && <div role="status" className="fixed right-4 top-20 z-[60] flex max-w-sm items-center gap-3 rounded-2xl border border-cyan-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-xl">
+        <span aria-hidden="true" className="text-xl">📳</span>
+        <span className="flex-1">Titretildin · Bir Knowledge üyesi sana titreşim gönderdi.</span>
+        <button type="button" onClick={() => setTitretmeUyarisi(false)} className="rounded-full px-2 py-1 text-slate-500 hover:bg-slate-100" aria-label="Titreşim uyarısını kapat">×</button>
+      </div>}
 
       {girisVar && (
         <nav aria-label="Ana menü" className={`fixed inset-x-0 bottom-0 z-50 border-t pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(25,54,74,0.08)] backdrop-blur-xl ${acikTema ? "border-slate-200 bg-white/95 text-slate-500 lg:hidden" : "border-white/10 bg-slate-950/95 text-slate-300"}`}>

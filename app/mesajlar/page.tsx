@@ -60,6 +60,14 @@ export default function Mesajlar() {
   const [engelDurumu, setEngelDurumu] = useState<EngelDurumu>("yok");
   const [engelSistemiHazir, setEngelSistemiHazir] = useState(true);
   const [engelGuncelleniyor, setEngelGuncelleniyor] = useState(false);
+  const [cevrimiciKullanicilar, setCevrimiciKullanicilar] = useState<Set<string>>(new Set());
+  const [karsiYaziyor, setKarsiYaziyor] = useState(false);
+  const [titretmeIzni, setTitretmeIzni] = useState(false);
+  const [titretmeAyarYukleniyor, setTitretmeAyarYukleniyor] = useState(true);
+  const [titretmeAyarHatasi, setTitretmeAyarHatasi] = useState("");
+  const [titretmeAyarGuncelleniyor, setTitretmeAyarGuncelleniyor] = useState(false);
+  const [titretmeSonuc, setTitretmeSonuc] = useState("");
+  const [titretmeGonderiliyor, setTitretmeGonderiliyor] = useState(false);
   const [sikayetMesajiId, setSikayetMesajiId] = useState("");
   const [sikayetNedeni, setSikayetNedeni] = useState("spam");
   const [sikayetAciklama, setSikayetAciklama] = useState("");
@@ -78,6 +86,11 @@ export default function Mesajlar() {
   const urlSohbetiAcildi = useRef(false);
   const dmKimligiRef = useRef<DmIdentity | null>(null);
   const karsiAnahtarRef = useRef("");
+  const typingKanaliRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const typingKanaliHazirRef = useRef(false);
+  const sonYaziyorSinyaliRef = useRef(0);
+  const karsiYaziyorZamanlayiciRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const titretmeSonGonderimRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     let aktif = true;
@@ -94,6 +107,135 @@ export default function Mesajlar() {
   }, [karsiAnahtar]);
 
   const secilenKisi = kisiler.find((kisi) => kisi.kullanici_id === secilenId);
+  const sohbetBasladi = aktifMesajlar.length > 0;
+
+  useEffect(() => {
+    if (!benimId) return;
+    let etkin = true;
+    void supabase
+      .from("dm_titretme_izinleri")
+      .select("etkin")
+      .eq("kullanici_id", benimId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!etkin) return;
+        setTitretmeIzni(data?.etkin ?? false);
+        setTitretmeAyarHatasi(error ? "Titreşim ayarı yüklenemedi. Yeni DM SQL migration'ını çalıştır." : "");
+        setTitretmeAyarYukleniyor(false);
+      });
+    return () => { etkin = false; };
+  }, [benimId]);
+
+  useEffect(() => {
+    if (!benimId) return;
+    const kanal = supabase
+      .channel("knowledge:dm:presence", { config: { private: true } })
+      .on("presence", { event: "sync" }, () => {
+        const durum = kanal.presenceState() as Record<string, { kullanici_id?: string }[]>;
+        const cevrimiciler = new Set(
+          Object.values(durum).flatMap((oturumlar) => oturumlar.map((oturum) => oturum.kullanici_id).filter((id): id is string => !!id))
+        );
+        setCevrimiciKullanicilar(cevrimiciler);
+      })
+      .subscribe();
+    return () => { void supabase.removeChannel(kanal); };
+  }, [benimId]);
+
+  useEffect(() => {
+    if (!benimId || !secilenId || aktifMesajlar.length === 0 || engelDurumu !== "yok") {
+      typingKanaliRef.current = null;
+      typingKanaliHazirRef.current = false;
+      setKarsiYaziyor(false);
+      return;
+    }
+
+    let etkin = true;
+    const kanal = supabase
+      .channel(`knowledge:dm:typing:${secilenId}`, { config: { private: true } })
+      .on("broadcast", { event: "typing" }, ({ payload }) => {
+        if (!etkin || payload?.senderId !== secilenId) return;
+        setKarsiYaziyor(true);
+        if (karsiYaziyorZamanlayiciRef.current) clearTimeout(karsiYaziyorZamanlayiciRef.current);
+        karsiYaziyorZamanlayiciRef.current = setTimeout(() => setKarsiYaziyor(false), 2500);
+      })
+      .subscribe((durum) => {
+        typingKanaliHazirRef.current = durum === "SUBSCRIBED";
+        if (durum === "SUBSCRIBED") typingKanaliRef.current = kanal;
+      });
+
+    return () => {
+      etkin = false;
+      if (typingKanaliRef.current === kanal) typingKanaliRef.current = null;
+      typingKanaliHazirRef.current = false;
+      if (karsiYaziyorZamanlayiciRef.current) clearTimeout(karsiYaziyorZamanlayiciRef.current);
+      setKarsiYaziyor(false);
+      void supabase.removeChannel(kanal);
+    };
+  }, [benimId, secilenId, sohbetBasladi, engelDurumu]);
+
+  async function titretmeIzniDegistir(etkin: boolean) {
+    if (!benimId || titretmeAyarGuncelleniyor) return;
+    setTitretmeAyarGuncelleniyor(true);
+    setTitretmeAyarHatasi("");
+    if (etkin && "Notification" in window && Notification.permission === "default") {
+      try { await Notification.requestPermission(); } catch { /* Titreşim ve site içi uyarı izin istemeden de çalışır. */ }
+    }
+    const { error } = await supabase
+      .from("dm_titretme_izinleri")
+      .upsert({ kullanici_id: benimId, etkin, guncelleme_zamani: new Date().toISOString() }, { onConflict: "kullanici_id" });
+    setTitretmeAyarGuncelleniyor(false);
+    if (error) {
+      setTitretmeAyarHatasi("Ayar kaydedilemedi. Yeni DM SQL migration'ının çalıştırıldığını kontrol et.");
+      return;
+    }
+    setTitretmeIzni(etkin);
+    setTitretmeSonuc(etkin ? "Titreşim isteği gönderip almayı kabul ettin." : "Titreşim özelliği kapatıldı.");
+  }
+
+  async function titretmeGonder() {
+    if (!benimId || !secilenKisi || !titretmeIzni || titretmeGonderiliyor) return;
+    if (!cevrimiciKullanicilar.has(secilenKisi.kullanici_id)) {
+      setTitretmeSonuc("Bu kişi şu anda çevrimiçi görünmüyor.");
+      return;
+    }
+    const simdi = Date.now();
+    const sonGonderim = titretmeSonGonderimRef.current[secilenKisi.kullanici_id] ?? 0;
+    if (simdi - sonGonderim < 30_000) {
+      setTitretmeSonuc("Aynı kişiye yeniden titreşim göndermek için 30 saniye bekle.");
+      return;
+    }
+
+    setTitretmeGonderiliyor(true);
+    setTitretmeSonuc("");
+    const { error } = await supabase.rpc("dm_titretme_gonder", { p_alici_id: secilenKisi.kullanici_id });
+    setTitretmeGonderiliyor(false);
+    if (error) {
+      const mesaj = error.message;
+      setTitretmeSonuc(mesaj.includes("IKI_TARAF_ONAYI")
+        ? "Bu özellik için ikinizin de titreşim iznini açması gerekiyor."
+        : mesaj.includes("COK_SIK")
+          ? "Aynı kişiye yeniden göndermek için 30 saniye bekle."
+          : mesaj.includes("ALICI_LIMITI")
+            ? "Bu kullanıcı son bir dakikada yeterince titreşim aldı. Daha sonra tekrar dene."
+          : mesaj.includes("ONCE_SOHBET")
+            ? "Titreşim göndermeden önce bu kişiyle en az bir mesajlaşma başlat."
+            : mesaj.includes("ENGEL_VAR")
+              ? "Engel bulunan sohbetlerde titreşim gönderilemez."
+              : "Titreşim gönderilemedi. Yeni DM SQL migration'ının çalıştırıldığını kontrol et.");
+      return;
+    }
+    titretmeSonGonderimRef.current[secilenKisi.kullanici_id] = simdi;
+    setTitretmeSonuc(`@${secilenKisi.takma_ad} kişisine titreşim gönderildi.`);
+  }
+
+  function taslakDegisti(yeniTaslak: string) {
+    setTaslak(yeniTaslak);
+    if (!yeniTaslak.trim() || !typingKanaliRef.current || !typingKanaliHazirRef.current) return;
+    const simdi = Date.now();
+    if (simdi - sonYaziyorSinyaliRef.current < 1500) return;
+    sonYaziyorSinyaliRef.current = simdi;
+    void typingKanaliRef.current.send({ type: "broadcast", event: "typing", payload: { senderId: benimId } });
+  }
 
   const okunmayanlariIsaretle = useCallback(async (gonderenId: string, aliciId: string) => {
     if (!gonderenId || !aliciId || gonderenId === aliciId) return;
@@ -344,6 +486,8 @@ export default function Mesajlar() {
     aktifSohbetRef.current = kisi.kullanici_id;
     setArama("");
     setHata("");
+    setTitretmeSonuc("");
+    setKarsiYaziyor(false);
     setSikayetBilgisi("");
     setAktifMesajlar([]);
     setEngelDurumu("yok");
@@ -552,7 +696,7 @@ export default function Mesajlar() {
             <p className="mt-1 text-sm text-slate-400">
               {sifrelemeDurumu === "hazir" ? "Bu cihaz şifreli mesaj göndermeye hazır." :
                 sifrelemeDurumu === "yukleniyor" ? "Şifreleme anahtarın kontrol ediliyor…" :
-                  sifrelemeDurumu === "kurulum" ? "İlk kullanımda kurtarma parolası belirle." :
+                sifrelemeDurumu === "kurulum" ? "Bu eski hesap için kurtarma parolası belirle. Yeni hesaplarda bu işlem kayıt sırasında yapılır." :
                     sifrelemeDurumu === "kilitli" ? "Bu cihazda mesajlarını açmak için kurtarma parolanı gir." :
                       "Şifreleme kurulumu tamamlanamadı."}
             </p>
@@ -585,6 +729,24 @@ export default function Mesajlar() {
         {sifrelemeHatasi && sifrelemeDurumu !== "hata" && <p role="status" className="mt-3 text-sm text-amber-200">{sifrelemeHatasi}</p>}
         {(sifrelemeDurumu === "kurulum" || sifrelemeDurumu === "hazir") && <p className="mt-3 max-w-3xl text-xs leading-5 text-slate-500">Kurtarma parolanı güvenli bir yere kaydet. Unutursan yeni cihazda eski mesajlarını açamazsın. Mesaj içeriği şifrelenir; hesaplar ve gönderim zamanları gibi bilgiler gizlenmez.</p>}
         {sifrelemeDurumu === "hazir" && <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">Sunucu mesaj metnini çözemez. İlk anahtar güvenini doğrulamak için sohbet ettiğin kişiyle parmak izlerini site dışından karşılaştır.</p>}
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/70 p-4">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-semibold">MSN tarzı titreşim</h3>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Gönderip almak için ikiniz de izin vermelisiniz. Yalnızca çevrimiçi olduğunda ve mevcut sohbetinde çalışır; aynı kişiye 30 saniyede bir gönderilebilir, kullanıcı dakikada en fazla 3 titreşim alabilir. Cihaz titreşemiyorsa “Titretildin” uyarısı görünür.</p>
+          </div>
+          <label className="flex min-h-11 items-center gap-2 text-sm font-medium text-slate-700">
+            <input
+              type="checkbox"
+              checked={titretmeIzni}
+              disabled={titretmeAyarYukleniyor || titretmeAyarGuncelleniyor || !benimId}
+              onChange={(e) => void titretmeIzniDegistir(e.target.checked)}
+              className="h-5 w-5 accent-teal-700"
+            />
+            {titretmeAyarGuncelleniyor ? "Kaydediliyor…" : "Gönderme ve alma izni"}
+          </label>
+          {(titretmeAyarHatasi || titretmeSonuc) && <p role="status" className={`w-full text-xs leading-5 ${titretmeAyarHatasi ? "text-rose-700" : "text-teal-800"}`}>{titretmeAyarHatasi || titretmeSonuc}</p>}
+        </div>
       </section>
 
       <section className="grid min-h-[65dvh] flex-1 overflow-hidden border-y border-slate-200 bg-transparent lg:h-[calc(100dvh-15rem)] lg:min-h-[28rem] lg:grid-cols-[20rem_minmax(0,1fr)]">
@@ -608,14 +770,15 @@ export default function Mesajlar() {
               aramaSonuclari.length ? aramaSonuclari.map((kisi) => (
                 <button key={kisi.kullanici_id} onClick={() => void sohbetAc(kisi)} className="flex w-full items-center gap-3 border-b border-slate-100 px-3 py-3 text-left transition hover:bg-slate-100">
                   <Avatar kisi={kisi} />
-                  <span className="truncate text-sm font-medium">@{kisi.takma_ad}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">@{kisi.takma_ad}</span>
+                  {cevrimiciKullanicilar.has(kisi.kullanici_id) && <span className="flex items-center gap-1.5 text-xs text-emerald-700"><span className="h-2 w-2 rounded-full bg-emerald-500" />Çevrimiçi</span>}
                 </button>
               )) : <p className="px-3 py-5 text-sm text-slate-500">Bu kullanıcı adı bulunamadı.</p>
             ) : sonSohbetler.length ? sonSohbetler.map(({ kisi, mesaj }) => (
               <button key={kisi.kullanici_id} onClick={() => void sohbetAc(kisi)} className={`flex w-full items-center gap-3 border-b border-slate-100 px-3 py-3 text-left transition ${secilenId === kisi.kullanici_id ? "bg-cyan-50" : "hover:bg-slate-100"}`}>
                 <Avatar kisi={kisi} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">@{kisi.takma_ad}</span>
+                  <span className="flex items-center gap-2 truncate text-sm font-semibold">{cevrimiciKullanicilar.has(kisi.kullanici_id) && <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />}@{kisi.takma_ad}</span>
                   <span className="mt-1 block truncate text-xs text-slate-500">{mesaj.sifreli ? "🔒 Şifreli mesaj" : mesaj.icerik}</span>
                 </span>
                 <span className="flex shrink-0 flex-col items-end gap-1">
@@ -636,7 +799,8 @@ export default function Mesajlar() {
               <header className="flex items-center gap-3 border-b border-slate-200 px-4 py-3">
                 <button onClick={() => { setSecilenId(""); aktifSohbetRef.current = ""; }} className="rounded-lg px-2 py-1 text-slate-400 hover:bg-white/5 md:hidden" aria-label="Sohbet listesine dön">←</button>
                 <Avatar kisi={secilenKisi} />
-                <div className="min-w-0 flex-1"><p className="text-sm font-semibold">@{secilenKisi.takma_ad}</p><p className="text-xs text-slate-500">{sifrelemeDurumu === "hazir" && karsiAnahtar ? "Uçtan uca şifreli sohbet" : "Knowledge üyesi"}</p>{karsiParmakIzi && <p className="mt-1 break-all font-mono text-[9px] leading-4 text-slate-500">Anahtar: {karsiParmakIzi}</p>}</div>
+                <div className="min-w-0 flex-1"><p className="text-sm font-semibold">@{secilenKisi.takma_ad}</p><p className="text-xs text-slate-500">{karsiYaziyor ? "yazıyor…" : cevrimiciKullanicilar.has(secilenKisi.kullanici_id) ? "Çevrimiçi" : "Çevrimdışı"} · {sifrelemeDurumu === "hazir" && karsiAnahtar ? "Uçtan uca şifreli sohbet" : "Knowledge üyesi"}</p>{karsiParmakIzi && <p className="mt-1 break-all font-mono text-[9px] leading-4 text-slate-500">Anahtar: {karsiParmakIzi}</p>}</div>
+                {titretmeIzni && <button type="button" onClick={() => void titretmeGonder()} disabled={!cevrimiciKullanicilar.has(secilenKisi.kullanici_id) || titretmeGonderiliyor || engelDurumu !== "yok"} title={cevrimiciKullanicilar.has(secilenKisi.kullanici_id) ? "Karşılıklı izin varsa titreşim gönder" : "Titreşim için kullanıcının çevrimiçi olması gerekir"} className="min-h-10 shrink-0 rounded-full border border-teal-700 px-2 text-xs font-semibold text-teal-800 transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3">{titretmeGonderiliyor ? "…" : <><span className="hidden sm:inline">📳 Titret</span><span className="sm:hidden" aria-label="Titret">📳</span></>}</button>}
                 {engelSistemiHazir && <button
                   type="button"
                   onClick={() => void kullaniciyiEngelleVeyaAc()}
@@ -646,6 +810,7 @@ export default function Mesajlar() {
                   {engelGuncelleniyor ? "…" : engelDurumu === "ben_engelledim" ? "Engeli kaldır" : "Kullanıcıyı engelle"}
                 </button>}
               </header>
+              {titretmeSonuc && <p role="status" className="border-b border-slate-200 px-4 py-2 text-xs text-teal-800">{titretmeSonuc}</p>}
 
               <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-4 sm:p-6">
                 {!engelSistemiHazir && <p role="status" className="rounded-xl border border-amber-200/20 bg-amber-200/5 p-3 text-xs leading-5 text-amber-100">Engelleme ve şikâyet özelliklerini açmak için yeni Supabase SQL ayarını çalıştır.</p>}
@@ -682,7 +847,7 @@ export default function Mesajlar() {
                 <form onSubmit={mesajGonder} className="border-t border-slate-200 p-3 sm:p-4">
                   {hata && <p role="alert" className="mb-2 text-xs text-rose-200">{hata}</p>}
                   <div className="flex items-end gap-2">
-                    <textarea value={taslak} onChange={(e) => setTaslak(e.target.value)} maxLength={2000} rows={1} placeholder="Mesaj yaz…" className="max-h-32 min-h-11 flex-1 resize-y rounded-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-500 focus:border-cyan-700" />
+                    <textarea value={taslak} onChange={(e) => taslakDegisti(e.target.value)} maxLength={2000} rows={1} placeholder="Mesaj yaz…" className="max-h-32 min-h-11 flex-1 resize-y rounded-full border border-slate-300 bg-white px-4 py-3 text-sm text-slate-800 outline-none placeholder:text-slate-500 focus:border-cyan-700" />
                     <button type="submit" disabled={!taslak.trim() || gonderiliyor || engelGuncelleniyor} className="rounded-full bg-cyan-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-800 disabled:cursor-not-allowed disabled:opacity-50">{gonderiliyor ? "…" : "Gönder"}</button>
                   </div>
                 </form>
