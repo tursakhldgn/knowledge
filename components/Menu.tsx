@@ -12,6 +12,12 @@ export default function Menu() {
   const [kullaniciId, setKullaniciId] = useState("");
   const [okunmamis, setOkunmamis] = useState(0);
   const [soruMenusuAcik, setSoruMenusuAcik] = useState(false);
+  const [ayarMenusuAcik, setAyarMenusuAcik] = useState(false);
+  const [titretmeIzni, setTitretmeIzni] = useState(false);
+  const [ayarSekmesi, setAyarSekmesi] = useState("");
+  const [bildirimIzni, setBildirimIzni] = useState("");
+  const [gizliProfil, setGizliProfil] = useState(false);
+  const [gorunum, setGorunum] = useState(false);
   const [titretmeUyarisi, setTitretmeUyarisi] = useState(false);
   const titretmeUyarisiZamanlayici = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -117,7 +123,38 @@ export default function Menu() {
   }, [kullaniciId]);
 
   const girisVar = !!kullaniciId;
+  const anaSayfa = pathname === "/" || pathname === "/sorular";
   const acikTema = pathname !== "/giris";
+
+  useEffect(() => {
+    if (!kullaniciId) return;
+    let aktif = true;
+    void Promise.all([
+      supabase.from("dm_titretme_izinleri").select("etkin").eq("kullanici_id", kullaniciId).maybeSingle(),
+      supabase.from("profiller").select("gizli_profil").eq("kullanici_id", kullaniciId).maybeSingle(),
+    ]).then(([izin, profil]) => {
+      if (!aktif) return;
+      setTitretmeIzni(izin.data?.etkin === true);
+      setGizliProfil(profil.data?.gizli_profil === true);
+      setBildirimIzni("Notification" in window ? Notification.permission : "unsupported");
+    });
+    return () => { aktif = false; };
+  }, [kullaniciId]);
+
+  async function izinGuncelle(etkin: boolean) {
+    const onceki = titretmeIzni;
+    setTitretmeIzni(etkin);
+    if (etkin && "Notification" in window && Notification.permission === "default") {
+      setBildirimIzni(await Notification.requestPermission());
+    }
+    const { error } = await supabase.from("dm_titretme_izinleri").upsert({ kullanici_id: kullaniciId, etkin }, { onConflict: "kullanici_id" });
+    if (error) setTitretmeIzni(onceki);
+  }
+
+  async function bildirimIzniIste() {
+    if (!("Notification" in window)) { setBildirimIzni("unsupported"); return; }
+    setBildirimIzni(await Notification.requestPermission());
+  }
 
   return (
     <>
@@ -159,7 +196,7 @@ export default function Menu() {
           </nav>
         )}
         <div className="flex items-center gap-3">
-          {girisVar && acikTema && <div className="relative">
+        {girisVar && anaSayfa && <div className="relative">
             <button type="button" aria-expanded={soruMenusuAcik} onClick={() => setSoruMenusuAcik((acik) => !acik)} className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-700 text-2xl font-normal leading-none text-white transition hover:bg-teal-800" aria-label="OluÅŸtur">+</button>
             {soruMenusuAcik && <div className="absolute right-0 top-12 z-40 w-48 rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
               <Link href="/soru-ekle" onClick={() => setSoruMenusuAcik(false)} className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100">Soru paylaÅŸ</Link>
@@ -167,12 +204,13 @@ export default function Menu() {
             </div>}
           </div>}
           <InstallAppButton />
-          {girisVar && (
+          {girisVar && anaSayfa && (
             <Link href="/bildirimler" aria-label={`Bildirimler${okunmamis ? `, ${okunmamis} okunmamÄ±ÅŸ` : ""}`} className={`relative flex h-10 w-10 items-center justify-center rounded-xl transition ${acikTema ? "text-slate-500 hover:bg-slate-100" : "hover:bg-white/10"} ${pathname === "/bildirimler" ? "text-cyan-700" : acikTema ? "text-slate-500" : "text-slate-300"}`}>
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
               {okunmamis > 0 && <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{okunmamis > 99 ? "99+" : okunmamis}</span>}
             </Link>
           )}
+          {girisVar && pathname === "/profil" && <div className="relative"><button type="button" aria-label="Ayarlar" aria-expanded={ayarMenusuAcik} onClick={() => setAyarMenusuAcik(!ayarMenusuAcik)} className="rounded-xl px-3 py-2 text-xl text-white hover:bg-white/10">?</button>{ayarMenusuAcik && <div className="absolute right-0 top-12 z-50 w-80 rounded-2xl border border-white/10 bg-[#171922] p-4 text-sm shadow-2xl"><h2 className="mb-3 font-bold">Ayarlar</h2>{["Hesap", "Gizlilik", "Bildirimler", "Görünüm"].map(x=><button key={x} onClick={()=>setAyarSekmesi(ayarSekmesi===x?"":x)} className="block w-full border-b border-white/10 py-3 text-left text-slate-200">{x}<span className="float-right">{ayarSekmesi===x?"-":"+"}</span></button>)}{ayarSekmesi==="Hesap"&&<div className="py-3"><Link href="/profil" onClick={()=>setAyarMenusuAcik(false)} className="text-blue-300">Profil bilgilerini düzenle</Link><p className="mt-2 text-slate-400">Kullanýcý adý, biyografi ve fotoðrafýný düzenle.</p></div>}{ayarSekmesi==="Gizlilik"&&<label className="flex items-center justify-between py-3">Profili gizli tut<input type="checkbox" checked={gizliProfil} onChange={e=>{setGizliProfil(e.target.checked);localStorage.setItem("knowledge-gizli-profil",String(e.target.checked));}} /></label>}{ayarSekmesi==="Bildirimler"&&<div className="py-3"><button onClick={()=>void bildirimIzniIste()} className="rounded-lg bg-blue-600 px-3 py-2">Tarayýcý bildirim izni ver</button><p className="mt-2 text-slate-400">Durum: {bildirimIzni||"kontrol ediliyor"}</p><label className="mt-3 flex items-center justify-between">DM titreþim izni<input type="checkbox" checked={titretmeIzni} onChange={e=>void izinGuncelle(e.target.checked)} /></label></div>}{ayarSekmesi==="Görünüm"&&<div className="py-3"><button onClick={()=>{const yeni=!gorunum;setGorunum(yeni);document.documentElement.dataset.contrast=yeni?"high":"normal";localStorage.setItem("knowledge-yuksek-kontrast",String(yeni));}} className="flex w-full items-center justify-between">Yüksek kontrast <input type="checkbox" checked={gorunum} readOnly /></button></div>}<Link href="/profil" onClick={()=>setAyarMenusuAcik(false)} className="mt-3 block text-blue-300">Profili düzenle</Link><button onClick={async()=>{await supabase.auth.signOut();location.href="/giris";}} className="mt-3 block text-orange-400">Çýkýþ yap</button></div>}</div>}
           {!girisVar && (
             <Link href="/giris" className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${acikTema ? "bg-teal-700 text-white hover:bg-teal-800" : "bg-cyan-300 text-slate-950 hover:bg-cyan-200"}`}>
               GiriÅŸ / KayÄ±t
@@ -188,7 +226,7 @@ export default function Menu() {
       </div>}
 
       {girisVar && (
-        <nav aria-label="Ana menÃ¼" className={`fixed inset-x-0 bottom-0 z-50 border-t pb-[env(safe-area-inset-bottom)] shadow-[0_-12px_40px_rgba(25,54,74,0.08)] backdrop-blur-xl ${acikTema ? "border-slate-200 bg-white/95 text-slate-500 lg:hidden" : "border-white/10 bg-slate-950/95 text-slate-300"}`}>
+        <nav aria-label="Ana menÃ¼" className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#0d0e12]/95 pb-[env(safe-area-inset-bottom)] text-slate-400 shadow-[0_-12px_40px_rgba(0,0,0,0.35)] backdrop-blur-xl lg:hidden">
           <div className="mx-auto grid max-w-4xl grid-cols-5 px-1 pt-2">
             {[
               { href: "/sorular", label: "Ana sayfa", icon: "home" },
@@ -203,7 +241,7 @@ export default function Menu() {
                   key={item.href}
                   href={item.href}
                   aria-current={aktif ? "page" : undefined}
-                  className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 pb-2 text-[11px] font-medium transition ${aktif ? (acikTema ? "bg-teal-50 text-teal-800" : "text-cyan-200") : acikTema ? "text-slate-500 hover:bg-slate-100 hover:text-slate-800" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}
+                  className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-2 pb-2 text-[11px] font-medium transition ${aktif ? "bg-blue-500/15 text-blue-300" : "text-slate-400 hover:bg-white/5 hover:text-white"}`}
                 >
                   <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                     {item.icon === "home" && <><path d="m3 10 9-7 9 7" /><path d="M5 9v11h14V9M9 20v-6h6v6" /></>}
@@ -222,3 +260,5 @@ export default function Menu() {
     </>
   );
 }
+
+

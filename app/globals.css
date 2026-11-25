@@ -71,16 +71,20 @@ body {
 body > header.sticky { color: #f4f5f8 !important; background-color: rgb(13 14 18 / 92%) !important; border-color: rgb(255 255 255 / 10%) !important; }
 body > header.sticky nav { color: #a4a8b5; background-color: #171922; border-color: rgb(255 255 255 / 10%); }
 body > header.sticky nav a[aria-current="page"] { background: #21232e; color: #78a0ff; }
-body > div > nav[aria-label="Ana menü"] { color: #a4a8b5 !important; background: rgb(13 14 18 / 96%) !important; border-color: rgb(255 255 255 / 10%) !important; }
-body > div > nav[aria-label="Ana menü"] a[aria-current="page"] { color: #78a0ff !important; background: rgb(16 91 255 / 12%) !important; }
+body > div > nav[aria-label="Ana menÃ¼"] { color: #a4a8b5 !important; background: rgb(13 14 18 / 96%) !important; border-color: rgb(255 255 255 / 10%) !important; }
+body > div > nav[aria-label="Ana menÃ¼"] a[aria-current="page"] { color: #78a0ff !important; background: rgb(16 91 255 / 12%) !important; }
 body > header.sticky a[href="/giris"] { background: var(--royal-blue); }
 
 @media (min-width: 1024px) {
   [data-app-theme="light"] { padding-bottom: 2rem !important; }
 }
 /* Tangerine accents for key actions and achievement highlights. */
-body > header.sticky button[aria-label="Olu�tur"] { background: var(--tangerine) !important; color: #171922 !important; }
+body > header.sticky button[aria-label="Oluştur"] { background: var(--tangerine) !important; color: #171922 !important; }
 body > header.sticky a[href="/giris"] { background: var(--tangerine) !important; color: #171922 !important; }
 [data-app-theme="light"] [class~="text-amber-200"],
 [data-app-theme="light"] [class~="text-amber-100"] { color: #ff9b2f !important; }
 [data-app-theme="light"] [class*="border-amber-300"] { border-color: rgb(254 133 0 / 30%) !important; }
+/* Force the fixed mobile tab bar into the app's charcoal palette. */
+body nav.fixed.inset-x-0.bottom-0 { background-color:#0d0e12 !important; background-image:none !important; color:#a4a8b5 !important; border-color:rgb(255 255 255 / 12%) !important; box-shadow:0 -12px 40px rgb(0 0 0 / 35%) !important; }
+body nav.fixed.inset-x-0.bottom-0 a { color:#a4a8b5 !important; }
+body nav.fixed.inset-x-0.bottom-0 a[aria-current="page"] { color:#78a0ff !important; background-color:rgb(16 91 255 / 16%) !important; }
